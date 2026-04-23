@@ -6,17 +6,17 @@
 [![Evaluation](https://img.shields.io/badge/eval-EVAL.md-0F766E)](EVAL.md)
 [![Demo](https://img.shields.io/badge/demo-DEMO.md-1D4ED8)](DEMO.md)
 
-GameGuard is an LLM-agent-based automated QA framework for games. It turns
-design documents into executable test plans, runs them in deterministic
-sandboxes, and produces regression reports together with Jira-style bug
-summaries.
+GameGuard is an LLM-agent-based automated QA framework for games. It reads
+design documents, turns them into executable test plans, runs them in
+deterministic sandboxes, and produces regression reports together with
+Jira-style bug summaries.
 
 The system is built around a complete loop:
 
 `design doc -> invariants -> test plan -> sandbox execution -> regression diff -> bug report`
 
-It is meant to showcase how AI agents can be integrated into an engineering
-workflow rather than used as isolated prompt demos.
+The project is designed to demonstrate how AI agents can be integrated into a
+real engineering workflow rather than used as isolated prompt demos.
 
 ## At A Glance
 
@@ -38,6 +38,19 @@ workflow rather than used as isolated prompt demos.
 - Deterministic execution with replay, caching, budget control, and trace-based debugging
 - Markdown and HTML regression reports
 - Unity integration path through a gRPC adapter and mock server
+
+## What Makes It Interesting
+
+GameGuard focuses on a practical QA workflow that is often missing from
+AI-agent demos:
+
+- agents generate structured artifacts instead of free-form text
+- execution is deterministic and replayable
+- regressions are compared across baseline and candidate builds
+- failures are clustered into bug reports instead of left as raw logs
+
+This keeps the project closer to a real internal tool than to a one-off
+showcase script.
 
 ## Architecture
 
@@ -69,8 +82,8 @@ repeatable:
 - Both sandboxes implement the same adapter contract, which keeps upper layers stable.
 - Determinism is treated as a feature, so failures can be replayed exactly.
 
-This makes the project feel closer to an engineering toolchain than a one-shot
-agent experiment.
+This makes the project feel closer to an internal engineering toolchain than a
+single-run agent experiment.
 
 ## Demo Scenarios
 
@@ -98,7 +111,7 @@ The `pysim:v2` sandbox contains five representative regressions:
 | `BUG-004` | Precision bug | DoT damage takes a floating-point accumulation path |
 | `BUG-005` | Determinism break | RNG bypasses the sandbox seed |
 
-### Quest And 3D Regression
+### Quest and 3D Regression
 
 The `QuestSim` sandbox models branching quest logic, dialogue, navigation,
 save/load behavior, and interactive scene progression.
@@ -133,6 +146,18 @@ The pipeline is intentionally split into two phases:
 
 This keeps the generated artifacts durable and makes execution cheap, cacheable,
 and CI-friendly.
+
+## Core Components
+
+| Component | Purpose |
+|---|---|
+| `DesignDocAgent` | Extracts machine-checkable invariants from design documents |
+| `TestGenAgent` | Converts invariants into executable YAML test plans |
+| `ExploratoryAgent` | Generates adversarial or failure-seeking test cases |
+| `TriageAgent` | Clusters failures and emits Jira-compatible bug reports |
+| `CriticAgent` | Reviews and patches low-quality generated test cases |
+| `Runner` | Executes plans deterministically against a chosen sandbox |
+| `Reports` | Produces Markdown and HTML summaries for review and demos |
 
 ## Evaluation
 
@@ -179,6 +204,10 @@ cp .env.example .env
 
 Then configure at least one supported provider in `.env`.
 
+Expected local validation result:
+
+- `162 passed + 3 skipped` on the current test suite
+
 ## Useful Commands
 
 ```bash
@@ -216,6 +245,14 @@ evals/         evaluation scripts and result summaries
 artifacts/     generated outputs, ignored except placeholders
 ```
 
+## Use Cases
+
+- Generate test plans from game-design documents
+- Run deterministic regression checks across sandbox versions
+- Demonstrate bug discovery and triage in interview settings
+- Evaluate model behavior on tool-calling-heavy agent workflows
+- Prototype Unity-facing QA automation with a gRPC integration path
+
 ## Interview Walkthrough
 
 If you want to demo the project live, the fastest path is:
@@ -230,9 +267,8 @@ The full live-demo script is in [DEMO.md](DEMO.md).
 
 ## Public Release Notes
 
-This repository currently contains both showcase-ready material and some
-development-oriented documentation. If you want to prepare a cleaner public
-portfolio version, start with:
+This repository is a public showcase version of the project. For a cleaner
+portfolio-oriented release workflow, start with:
 
 - [docs/public_release_checklist.md](docs/public_release_checklist.md)
 - [docs/public_repo_manifest.md](docs/public_repo_manifest.md)
@@ -245,5 +281,4 @@ portfolio version, start with:
 
 ## License
 
-Portfolio and interview use. Add a formal open-source license before publishing
-the repository as a public project.
+See `LICENSE`.

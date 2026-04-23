@@ -248,18 +248,6 @@ artifacts/     运行产物，默认忽略，仅保留占位
 - 评估不同模型在 tool-calling Agent 工作负载上的表现
 - 验证 Unity-facing QA 自动化路径的可行性
 
-## 面试演示建议
-
-如果你想用它做现场演示，最顺的路径通常是：
-
-1. 先展示架构图
-2. 运行 `gameguard info`
-3. 跑一条 `PySim` 回归流程
-4. 打开生成的 HTML 报告
-5. 顺着一个 failure trace 讲到对应 bug report
-
-更完整的演示脚本见 [DEMO.md](DEMO.md)。
-
 ## 限制
 
 - 这是一个适合作品展示的原型，不是生产级游戏测试平台

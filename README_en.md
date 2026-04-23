@@ -255,18 +255,6 @@ artifacts/     generated outputs, ignored except placeholders
 - Evaluate model behavior on tool-calling-heavy agent workflows
 - Prototype Unity-facing QA automation with a gRPC integration path
 
-## Interview Walkthrough
-
-If you want to demo the project live, the fastest path is:
-
-1. Show the architecture diagram.
-2. Run `gameguard info`.
-3. Run one regression flow in `PySim`.
-4. Open the generated HTML report.
-5. Walk through one failure trace and the corresponding bug report.
-
-The full live-demo script is in [DEMO.md](DEMO.md).
-
 ## Limitations
 
 - This is a portfolio-grade prototype, not a production game-testing platform.

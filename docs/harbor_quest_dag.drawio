@@ -1,0 +1,92 @@
+<mxfile host="app.diagrams.net" agent="drawio-skill" version="24.0.0">
+  <diagram id="harbor-dag" name="Harbor Quest DAG">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="QuestSim 示例：初识港口 · 分支任务 DAG" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="10" width="900" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="2 条分支 + 1 个汇流点 + 存档点 + 物理推箱 · v2 植入 Q-BUG-002 / Q-BUG-005 · 红线标出" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="160" y="46" width="1100" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="spawn" value="Player Spawn&#10;(1.5, 1.5, 0)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="540" y="90" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s0" value="S0  抵达港口&#10;&#10;trigger: enter_volume&#10;target: harbor_gate&#10;bbox: (8-12, 8-12, 0-3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="S1  选择阵营 (分支点)&#10;&#10;next_steps: [S2A, S2B]" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="500" y="320" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s2a" value="S2A  帮船长 ✓&#10;&#10;trigger: interact_entity&#10;target: npc_captain (15, 15)&#10;&#10;on_enter_flags:&#10;  quest.harbor.alliance_chosen = captain&#10;&#10;(v1 / v2 一致)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="460" width="300" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s2b" value="S2B  帮商人&#10;&#10;trigger: interact_entity&#10;target: npc_merchant (5, 15)&#10;&#10;v1: on_enter_flags = {alliance=merchant}&#10;v2: on_enter_flags = {} ← Q-BUG-002" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="780" y="460" width="300" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3" value="S3  进入仓库 (汇流)&#10;&#10;trigger: enter_volume&#10;target: warehouse_entrance (9-11, 1-4)&#10;&#10;requires_flags: [alliance_chosen]&#10;&#10;v2 走 S2B → flag 未 set → 永远卡在这里" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="460" y="680" width="360" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s4" value="S4  推箱到压力板 (END)&#10;&#10;trigger: trigger_fired&#10;target: pressure_plate_vol&#10;watch_entity: crate_1 (mass=5, pushable)&#10;&#10;物理：dummy 或 pybullet backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="460" y="860" width="360" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="nav_inset" value="Q-BUG-005  NavGrid 孤岛&#10;&#10;v2 场景加载时将 (12-14, 7-9) 和&#10;(12-14, 16-18) 误标为 blocked，把&#10;仓库入口区域切成孤岛。&#10;&#10;抓它的 invariant:&#10;  · path_exists_between&#10;  · no_stuck_positions (Tarjan SCC=1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=middle;spacingLeft=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="680" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q002_inset" value="Q-BUG-002  分支死锁&#10;&#10;v2 S2B 漏 set alliance flag。&#10;走商人线的玩家永远推进不了 S3。&#10;&#10;抓它的 invariant:&#10;  · quest_step_reachable (BFS 检查 end)&#10;  · quest_no_orphan_flag&#10;    (set 集合 ⊆ 读取集合)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=middle;spacingLeft=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="460" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity_legend" value="场景实体 (EntityRegistry)&#10;&#10;· p1  Player  (1.5, 1.5)&#10;· npc_captain (15, 15) · interact_range=3&#10;· npc_merchant (5, 15) · interact_range=3&#10;· crate_1 (11, 3) · physics_mass=5 · pushable&#10;· pressure_plate (13, 3) · trigger bbox 12.5-13.5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;verticalAlign=middle;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="20" y="460" width="160" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_spawn_s0" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.5;" edge="1" parent="1" source="spawn" target="s0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s0_s1" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="s0" target="s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s1_s2a" value="选船长" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="s1" target="s2a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s1_s2b" value="选商人" style="endArrow=classic;html=1;rounded=0;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="s1" target="s2b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_s2a_s3" value="flag 已 set&#10;(v1/v2 均通过)" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="s2a" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s2b_s3" value="v1: 通过&#10;v2: 卡住 ✗" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=2;fontSize=10;fontStyle=1;" edge="1" parent="1" source="s2b" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_s3_s4" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_q002_s2b" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.5;dashed=1;startArrow=classic;startFill=1;" edge="1" parent="1" source="q002_inset" target="s2b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q005_s3" style="endArrow=classic;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=1.5;dashed=1;startArrow=classic;startFill=1;" edge="1" parent="1" source="nav_inset" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bottom_note" value="完整 YAML 见 testcases/quest_system/harbor_handwritten.yaml (8 条用例，覆盖正反 2 条分支 + save/load + 物理谜题)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#888888;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1000" width="1200" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,122 @@
+# 人工标注的"DesignDocAgent 读 docs/example_skill_v1.md 后应该抽出来的 invariant 集"。
+#
+# 策划文档里显式声明了 10 条 meta-invariant（I-01 到 I-10）。Agent 会按实例
+# 展开成多个具体 invariant（每个 actor / skill / buff 一条）。
+#
+# 这份 golden 列的是"至少要抽到"的实例集。Agent 超过这个集（比如对更多 skill
+# 展开）算 novel，不算错；少于这个集算 missed。
+#
+# 覆盖策略（per-kind）：
+#   hp/mp_nonneg        : 对 dummy（受攻击方）必须有；p1 可选
+#   cooldown_at_least_*: 每个 skill 一条（4 个 skill 都要）
+#   buff_refresh_*      : 3 个 refresh buff 都要
+#   buff_stacks_*       : 3 个 buff 都要（max_stacks=1）
+#   interrupt_*         : cast_time > 0 的技能需要（fireball / frostbolt / focus 3 个）
+#                         ignite cast_time=0 技术上也能打断但意义不大，可选
+#   dot_total_*         : 只有 buff_burn 是 DoT
+#   replay_deterministic: 全局 1 条
+
+required:
+  # --- I-01 / I-02 活着/资源 ---
+  - kind: hp_nonneg
+    actor: dummy
+    note: "dummy 被攻击方，HP 跌到负值直接暴露伤害结算 bug"
+
+  - kind: mp_nonneg
+    actor: p1
+    note: "p1 施法方，MP 被多扣或不退款能抓到"
+
+  # --- I-03/I-04 冷却 ---
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_fireball
+    expected_cooldown: 8.0
+
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_frostbolt
+    expected_cooldown: 6.0
+
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_ignite
+    expected_cooldown: 12.0
+
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_focus
+    expected_cooldown: 20.0
+
+  # --- I-05 refresh magnitude ---
+  - kind: buff_refresh_magnitude_stable
+    actor: dummy
+    buff: buff_chilled
+    expected_magnitude: 0.3
+
+  - kind: buff_refresh_magnitude_stable
+    actor: dummy
+    buff: buff_burn
+    expected_magnitude: 10.0
+
+  - kind: buff_refresh_magnitude_stable
+    actor: p1
+    buff: buff_arcane_power
+    expected_magnitude: 0.2
+
+  # --- I-06 stacks ---
+  - kind: buff_stacks_within_limit
+    actor: dummy
+    buff: buff_chilled
+    max_stacks: 1
+
+  - kind: buff_stacks_within_limit
+    actor: dummy
+    buff: buff_burn
+    max_stacks: 1
+
+  - kind: buff_stacks_within_limit
+    actor: p1
+    buff: buff_arcane_power
+    max_stacks: 1
+
+  # --- I-07 打断清施法字段 ---
+  - kind: interrupt_clears_casting
+    actor: p1
+
+  # --- I-08 打断退 MP ---
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_fireball
+
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_frostbolt
+
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_focus
+
+  # --- I-09 DoT 总伤 ---
+  - kind: dot_total_damage_within_tolerance
+    actor: dummy
+    buff: buff_burn
+    expected_total: 40.0
+
+  # --- I-10 确定性 ---
+  - kind: replay_deterministic
+
+# 上面共 17 条"必须抽到"。Agent 抽 >=17 算完整召回，<17 算 missed。
+total_required: 17
+
+# 可选项（抽到算 bonus，不抽也不扣分）：
+optional:
+  - kind: hp_nonneg
+    actor: p1
+
+  - kind: mp_nonneg
+    actor: dummy
+
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_ignite
+    note: "ignite cast_time=0，能不能打断有歧义，抽到也 OK"

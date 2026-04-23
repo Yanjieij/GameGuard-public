@@ -1,0 +1,183 @@
+// GameGuard ↔ Unity 通信协议 v1
+//
+// ============================================================================
+// 设计意图
+// ============================================================================
+// 这是 GameGuard Adapter 接入真实 Unity 引擎的协议骨架。**当前不实现**完整
+// 服务端，仅定义消息格式 + Python 客户端存根 + Unity C# bridge 骨架，证明
+// 架构层面已为接入做好准备。
+//
+// 选择 gRPC 而非 REST 的理由：
+//   - 双向流：Unity 在 PlayMode 里持续 emit 事件（动画、状态变化），需要
+//     server-streaming 而非轮询
+//   - protobuf 强类型：避免 JSON 字段名漂移导致的接口 break
+//   - 跨语言：Python (gameguard) ↔ C# (Unity) 一份 .proto 两边生成代码
+//
+// 真实游戏团队（米哈游 / 网易 / 腾讯）的 QA bridge 多用 gRPC + protobuf 或
+// 自研 binary 协议。Unity 官方 com.unity.grpc 包提供了 native 支持。
+// ============================================================================
+
+syntax = "proto3";
+
+package gameguard.unity.v1;
+
+
+// ----------------------------------------------------------------------------
+// 服务定义：与 GameAdapter ABC 一一对应
+// ----------------------------------------------------------------------------
+
+service GameGuardSandbox {
+  // 初始化：seed 注入 → 返回初始 SandboxState
+  rpc Reset(ResetRequest) returns (StateResponse);
+
+  // 单步推进：提交一个 Action → 返回执行结果 + 新 state
+  rpc Step(StepRequest) returns (StepResponse);
+
+  // 当前 state 拉取（不消费）
+  rpc QueryState(Empty) returns (StateResponse);
+
+  // server-streaming：持续推送事件流（每个 sandbox tick 推一批）
+  // 用途：trace 实时收集 + 不变式 EVERY_TICK 检查
+  rpc StreamEvents(StreamEventsRequest) returns (stream EventBatch);
+
+  // snapshot/restore round-trip（bug 一键复现）
+  rpc Snapshot(Empty) returns (SnapshotBlob);
+  rpc Restore(SnapshotBlob) returns (StateResponse);
+
+  // 元数据：版本号 / sandbox 类型，便于日志归档
+  rpc Info(Empty) returns (AdapterInfo);
+}
+
+
+// ----------------------------------------------------------------------------
+// 消息类型
+// ----------------------------------------------------------------------------
+
+message Empty {}
+
+message ResetRequest {
+  uint64 seed = 1;
+  // D19 扩展：mock server 按 spec 路由到 PySim / QuestSim 后端
+  // 支持 "pysim:v1" / "pysim:v2" / "questsim:v1" / "questsim:v1-harbor" 等
+  // 空字符串时 server 默认走 pysim:v1
+  string sandbox_spec = 2;
+}
+
+// Action 是个 oneof：PySim 四种（cast / wait / interrupt / noop）+ QuestSim
+// 五种（move_to / interact / dialogue / save / load）走 generic 承载。
+// QuestSim 的字段形状变化快，用 JSON payload 降低 proto churn；PySim 固化。
+message Action {
+  oneof variant {
+    CastAction cast = 1;
+    WaitAction wait = 2;
+    InterruptAction interrupt = 3;
+    NoopAction noop = 4;
+    GenericAction generic = 5;
+  }
+}
+
+message GenericAction {
+  string kind = 1;           // domain.Action.kind 字符串（如 "move_to"）
+  string payload_json = 2;   // Pydantic model_dump_json()
+}
+
+message CastAction {
+  string actor = 1;
+  string skill = 2;
+  string target = 3;
+}
+
+message WaitAction {
+  double seconds = 1;
+}
+
+message InterruptAction {
+  string actor = 1;
+}
+
+message NoopAction {}
+
+message StepRequest {
+  Action action = 1;
+}
+
+message StepResponse {
+  StateResponse state = 1;
+  bool accepted = 2;
+  string reason = 3;          // 拒绝原因（如 "insufficient mp"）
+  uint32 new_events = 4;      // 本次 step 新增多少事件
+  bool done = 5;              // 是否已分胜负
+}
+
+// SandboxState：仅同步 GameGuard 关心的子集（HP/MP/buffs/cooldowns/state machine）
+// 复杂的物理 / 渲染状态走 custom_fields 字段（bytes）按需扩展
+message StateResponse {
+  double t = 1;
+  uint64 tick = 2;
+  uint64 seed = 3;
+  repeated Character characters = 4;
+  uint64 rng_draws = 5;       // 用于 I-10 replay_determinism
+  // QuestSim 扩展字段走 JSON 透传（scene / quest / entities / nav / save）；
+  // pysim 后端填空 bytes。这样 proto schema 对两类后端都稳定，新字段不用改 proto。
+  // 格式：UTF-8 JSON，由 translate.py::state_to_custom_bytes 生成
+  bytes custom_fields = 100;
+}
+
+message Character {
+  string id = 1;
+  string name = 2;
+  double hp = 3;
+  double hp_max = 4;
+  double mp = 5;
+  double mp_max = 6;
+  string state = 7;           // "idle" / "casting" / "stunned" / "dead"
+  string casting_skill = 8;   // 空字符串表示没在 cast
+  double cast_remaining = 9;
+  map<string, double> cooldowns = 10;
+  repeated BuffInstance buffs = 11;
+}
+
+message BuffInstance {
+  string spec_id = 1;
+  double magnitude = 2;
+  double remaining = 3;
+  uint32 stacks = 4;
+  string source_id = 5;
+  double applied_at = 6;
+}
+
+// EventBatch：一次 tick 产生的所有事件打包（避免单事件 RPC 开销）
+message EventBatch {
+  repeated Event events = 1;
+}
+
+message Event {
+  uint64 tick = 1;
+  double t = 2;
+  string kind = 3;           // 与 EventKind Literal 一致
+  string actor = 4;
+  string target = 5;
+  string skill = 6;
+  string buff = 7;
+  double amount = 8;
+  // meta dict 用 JSON 字符串透传，避免 protobuf any 复杂度
+  string meta_json = 9;
+}
+
+message StreamEventsRequest {
+  // 可选：只订阅特定 kind 的事件，减少网络流量
+  repeated string kind_filter = 1;
+}
+
+message SnapshotBlob {
+  bytes data = 1;
+  string format_version = 2;  // "v1"
+}
+
+message AdapterInfo {
+  string name = 1;            // "unity-headless"
+  string version = 2;         // "0.1-mock"
+  bool deterministic = 3;
+  string engine_version = 4;  // Unity 版本 e.g. "2022.3.45f1"
+  string project_name = 5;
+}

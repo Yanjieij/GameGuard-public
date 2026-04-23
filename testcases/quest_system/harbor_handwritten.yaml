@@ -1,0 +1,250 @@
+# ============================================================================
+# Harbor Quest 手写回归套件 · QuestSim D18 验收用
+# ============================================================================
+#
+# 这份 YAML 是 "策划 / QA 手工写" 级别的回归用例，覆盖 Q-BUG-001 ~ Q-BUG-005
+# 全部 5 类 bug。v1 期望全通过（黄金）；v2 期望其中 5 条失败（对应 5 个植入 bug）。
+#
+# 使用：
+#   gameguard run    --plan testcases/quest_system/harbor_handwritten.yaml \
+#                    --sandbox questsim:v1-harbor
+#   gameguard regress --plan testcases/quest_system/harbor_handwritten.yaml \
+#                    --baseline questsim:v1-harbor --candidate questsim:v2-harbor
+#
+# ----------------------------------------------------------------------------
+# 场景布局参考（详见 gameguard/sandbox/questsim/scenes/harbor.py）
+#   玩家 p1 @ (1.5, 1.5)
+#   npc_captain @ (15, 15)    npc_merchant @ (5, 15)
+#   harbor_gate volume (8-12, 8-12)
+#   warehouse_entrance volume (9-11, 1-4)
+#   pressure_plate_vol volume (12.5-13.5, 2.5-3.5)
+#   crate_1 (dynamic mass=5) @ (11, 3, 0.5)
+# ============================================================================
+
+id: quest_system.harbor
+name: 初识港口 · Quest 回归
+description: >
+  覆盖 Q-BUG-001 ~ 005 的手写回归。v1 全绿，v2 应出 5 个 NEW failure。
+version: "0.1.0"
+
+cases:
+
+  # ------------------------------------------------------------------------
+  # 用例 1：harbor_gate trigger 被进入时必触发 → Q-BUG-001 oracle
+  # ------------------------------------------------------------------------
+  - id: harbor-trigger-fires-on-enter
+    name: 进入港口 gate 必须触发 step S0
+    description: |
+      玩家瞬移到 harbor_gate 中心，等一个 tick。v1 应发 trigger_fired；
+      v2 因 `trigger_boundary_inclusive=False` 可能漏触发边界情况。
+      我们瞬移到 volume 边界（x=8.0, y=10.0）测试 inclusive 语义。
+    tags: [regression, Q-BUG-001, trigger]
+    strategy: handwritten
+    derived_from:
+      - "bug:Q-BUG-001"
+    seed: 1
+    sandbox: "questsim:v1-harbor"
+    actions:
+      # 瞬移到 harbor_gate 的左边界 x=8（minimum）
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 8.0, y: 10.0, z: 0}}
+      - {kind: wait, seconds: 0.2}
+    assertions:
+      - invariant:
+          kind: trigger_volume_fires_on_enter
+          id: Q-I04-harbor_gate
+          description: 玩家在 harbor_gate 内必触发
+          trigger_id: harbor_gate
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 2：走 merchant 分支应能到 S3 → Q-BUG-002 oracle
+  # ------------------------------------------------------------------------
+  - id: harbor-merchant-branch-reaches-s3
+    name: 商人分支推进到 S3（需要 alliance flag）
+    description: |
+      玩家走 S2B 商人分支，interact 商人后 alliance flag 应被 set；
+      然后玩家进仓库 warehouse_entrance 应推进 S3。
+      v2 的 Q-BUG-002：S2B 漏 set flag → S3 的 requires_flags 不满足。
+    tags: [regression, Q-BUG-002, quest]
+    strategy: handwritten
+    derived_from:
+      - "bug:Q-BUG-002"
+    seed: 2
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 10, y: 10, z: 0}}
+      - {kind: wait, seconds: 0.2}
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 5, y: 14, z: 0}}
+      - {kind: interact, actor: p1, entity_id: npc_merchant}
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 10, y: 3, z: 0}}
+      - {kind: wait, seconds: 0.2}
+    assertions:
+      - invariant:
+          kind: quest_step_reachable
+          id: Q-I01-harbor
+          description: harbor end step 应可达
+          quest_id: harbor
+        when: end_of_run
+      - invariant:
+          kind: quest_no_orphan_flag
+          id: Q-I03-harbor
+          description: 无孤儿 flag
+          quest_id: harbor
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 3：quest_reset 后 NPC state 完整恢复 → Q-BUG-003 oracle
+  # ------------------------------------------------------------------------
+  - id: harbor-npc-respawn-on-reset
+    name: NPC state 在 quest_reset 后完整恢复
+    description: |
+      玩家 interact 船长改变 NPC state (dialogue_step)，然后触发 quest_reset。
+      NPC 的 state["dialogue_step"] 和 "greeted" 应恢复到 initial 值。
+      v2 的 Q-BUG-003 只恢复 pos 不恢复 state → NPC 残留 dirty 值。
+    tags: [regression, Q-BUG-003, reset]
+    strategy: handwritten
+    derived_from:
+      - "bug:Q-BUG-003"
+    seed: 3
+    sandbox: "questsim:v1-harbor"
+    actions:
+      # 靠近船长并 interact 改变 state（runtime 会手工改 dialogue_step）
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 14, y: 15, z: 0}}
+      - {kind: interact, actor: p1, entity_id: npc_captain}
+      - {kind: wait, seconds: 0.1}
+    assertions:
+      - invariant:
+          kind: npc_respawn_on_reset
+          id: Q-I05-npc_captain
+          description: 船长在 reset 后应恢复
+          npc_id: npc_captain
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 4：save/load round-trip → Q-BUG-004 oracle
+  # ------------------------------------------------------------------------
+  - id: harbor-save-load-round-trip
+    name: Save 后 Load 回来状态完全一致
+    description: |
+      存档→继续推进→读档，state 应完全恢复。
+      v1 PickleSaveCodec 保证类型完整；v2 LossyJsonSaveCodec 会漏
+      Vec3/Enum/dict 的类型信息。
+    tags: [regression, Q-BUG-004, save]
+    strategy: handwritten
+    derived_from:
+      - "bug:Q-BUG-004"
+    seed: 4
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 10, y: 10, z: 0}}
+      - {kind: wait, seconds: 0.1}
+    assertions:
+      - invariant:
+          kind: save_load_round_trip
+          id: Q-I06-slot_auto
+          description: save/load 完整 round-trip
+          slot: auto
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 5：NavGrid 无孤岛（强连通）→ Q-BUG-005 oracle
+  # ------------------------------------------------------------------------
+  - id: harbor-no-stuck-positions
+    name: 场景 NavGrid 必须无孤岛
+    description: |
+      整张港口地图的可行区域应强连通。v2 的 harbor scene 在 (12-14, 7-9)
+      和 (12-14, 16-18) 额外 blocked，把地图分成多个岛，此用例应红。
+    tags: [regression, Q-BUG-005, navmesh]
+    strategy: handwritten
+    derived_from:
+      - "bug:Q-BUG-005"
+    seed: 5
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: wait, seconds: 0.1}
+    assertions:
+      - invariant:
+          kind: no_stuck_positions
+          id: Q-I08-harbor
+          description: harbor 所有可行区域强连通
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 6：保底用例 · 走 captain 分支应能到 S3 S4（v1 v2 都应通过）
+  # ------------------------------------------------------------------------
+  - id: harbor-captain-branch-smoke
+    name: 船长分支 · 完整推进不卡
+    description: |
+      玩家走 S2A 船长分支（v2 正常 set flag），然后进仓库应推进 S3。
+      这个用例 v1/v2 都应 PASS，作为回归基线——保证 v2 没"全部炸了"。
+    tags: [smoke, quest, captain]
+    strategy: handwritten
+    seed: 6
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 10, y: 10, z: 0}}
+      - {kind: wait, seconds: 0.1}
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 15, y: 14, z: 0}}
+      - {kind: interact, actor: p1, entity_id: npc_captain}
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 10, y: 3, z: 0}}
+      - {kind: wait, seconds: 0.1}
+    assertions:
+      - invariant:
+          kind: quest_step_reachable
+          id: Q-I01-captain
+          description: end 可达
+          quest_id: harbor
+        when: end_of_run
+      - invariant:
+          kind: quest_step_once
+          id: Q-I02-captain
+          description: 每个 step 最多 enter 一次
+          quest_id: harbor
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 7：interact 距离一致性
+  # ------------------------------------------------------------------------
+  - id: harbor-interact-range-consistent
+    name: interact 距离必须 ≤ interact_range
+    description: |
+      玩家靠近 NPC 再 interact，distance 应在 interact_range 内。
+      这条在 v1/v2 都应 PASS（当前两版 interact 逻辑一致）。
+    tags: [smoke, interact]
+    strategy: handwritten
+    seed: 7
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: move_to, actor: p1, mode: teleport, pos: {x: 14, y: 15, z: 0}}
+      - {kind: interact, actor: p1, entity_id: npc_captain}
+    assertions:
+      - invariant:
+          kind: interaction_range_consistent
+          id: Q-I10-interact
+          description: interact 距离一致
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 8：A* 可达性
+  # ------------------------------------------------------------------------
+  - id: harbor-path-exists-player-to-warehouse
+    name: 玩家起点到仓库门口有路径
+    description: |
+      A* 从 (1.5, 1.5) 到 (10, 3) 必须有解。
+      v2 的 NavGrid 多了孤岛，(10, 3) 可能被切断，本条应红。
+    tags: [regression, nav, Q-BUG-005]
+    strategy: handwritten
+    seed: 8
+    sandbox: "questsim:v1-harbor"
+    actions:
+      - {kind: wait, seconds: 0.1}
+    assertions:
+      - invariant:
+          kind: path_exists_between
+          id: Q-I07-player_to_warehouse
+          description: 玩家到仓库门口 A* 有路径
+          from_x: 1.5
+          from_y: 1.5
+          to_x: 10
+          to_y: 3
+        when: end_of_run

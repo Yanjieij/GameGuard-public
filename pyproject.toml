@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gameguard"
+version = "0.1.0"
+description = "LLM Agent-driven automated QA system for Unity games"
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [{ name = "GameGuard" }]
+dependencies = [
+    "pydantic>=2.6",
+    "typer>=0.12",
+    "rich>=13.7",
+    "ruamel.yaml>=0.18",
+    "jinja2>=3.1",
+    # LiteLLM 统一多家 LLM（OpenAI / Anthropic / 智谱 / DeepSeek / ...）
+    "litellm>=1.50",
+    # 仍保留 openai/anthropic 是因为 LiteLLM 在某些场景下直接复用它们的客户端
+    "openai>=1.30",
+    "anthropic>=0.25",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    # D8 property-based 测试
+    "hypothesis>=6.100",
+]
+# D16 QuestSim 物理谜题可选 backend（推箱压力板等）。
+# dummy backend 默认够用；装 pybullet 才会启用真 3D 刚体仿真。
+# 固定 timestep + 单线程 + deterministicOverlappingPairs 保证 replay 一致。
+physics = [
+    "pybullet>=3.2",
+]
+# Stage 6 Unity mock gRPC server 与 proto 生成。
+# 只有跑 unity:headless sandbox 才需要；核心 pysim / questsim 管线不依赖。
+unity = [
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "protobuf>=4.25",
+]
+
+[project.scripts]
+gameguard = "gameguard.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["gameguard*"]
+
+[tool.setuptools.package-data]
+# Jinja2 模板需要随包安装；否则 wheel 部署后找不到
+"gameguard.reports.templates" = ["*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+# 只把文件名 test_*.py 里的函数当测试。
+# 否则 pytest 会把我们的领域模型 TestCase / TestPlan 当作测试类收集并警告。
+python_classes = "_NoneClass"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "unity: Stage 6 · UnityAdapter ↔ mock gRPC server E2E 测试；用 `pytest -m 'not unity'` 跳过",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# 自动生成的 pb2 / pb2_grpc 代码不走我们的 lint 规则
+extend-exclude = ["gameguard/sandbox/unity/generated/*"]

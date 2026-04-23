@@ -1,0 +1,243 @@
+<mxfile host="app.diagrams.net" agent="drawio-skill" version="24.0.0">
+  <diagram id="gameguard-arch" name="GameGuard Architecture">
+    <mxGraphModel dx="1600" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1760" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="GameGuard · LLM Agent 驱动的游戏自动化测试系统" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="10" width="1000" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="plan-and-execute · 5 Agent 分离 · PySim + QuestSim 双沙箱 · Unity proto 就绪 · 确定性回归" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="280" y="48" width="1200" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cli" value="gameguard CLI (typer)&#10;&#10;run · generate · regress · triage · info" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="620" y="90" width="520" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="orch" value="Orchestrator · Plan-and-Execute Planner&#10;&#10;输出 TestPlan (DAG of TestCases)&#10;run_plan_pipeline / run_execute_pipeline · review_hook 预留" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="190" width="640" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agents_banner" value="Agents 层 · 职责分离 · 共享 AgentLoop + Tool Registry" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="1680" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ag_design" value="DesignDocAgent&#10;&#10;策划文档 → Invariant&#10;list_docs · read_section&#10;emit_invariant · finalize" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="330" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_testgen" value="TestGenAgent&#10;&#10;Invariants → TestCase&#10;Contract / Property / Exploratory&#10;list_skills · list_quests · emit_testcase" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="390" y="330" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_exec" value="ExecutorAgent / Runner&#10;&#10;驱动 Adapter 执行 TestPlan&#10;收集 EventLog + Snapshot&#10;sandbox_crash → oracle fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="330" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_triage" value="TriageAgent&#10;&#10;Failure → Jira-compat BugReport&#10;规则聚类 + LLM-as-judge&#10;emit_bug_report · merge_clusters" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="330" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ag_critic" value="CriticAgent (stretch)&#10;&#10;TestCase 静态审查&#10;inspect_case · propose_fix&#10;接入 Orchestrator review_hook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="330" width="300" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tool_container" value="Shared Tool Layer · Pydantic Schema → OpenAI function-calling · 严格 schema 校验 · 结构化错误反馈" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="475" width="1680" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_doc" value="doc_tools&#10;list_docs · list_sections&#10;read_section · read_full" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="510" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_testgen" value="testgen_tools&#10;list_invariants · list_skills&#10;list_quests · emit_testcase · finalize" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="390" y="510" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_sandbox" value="sandbox_tools / runner&#10;reset · step · query_state&#10;snapshot · restore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="510" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_triage" value="triage_tools&#10;list_failures · emit_bug_report&#10;merge_clusters · finalize" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="510" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_critic" value="critic_tools&#10;inspect_case · propose_fix&#10;drop_case · accept_all" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;align=center;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="510" width="300" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="domain_container" value="Domain Layer · 纯 Pydantic 模型 · 与 Agent/Sandbox 解耦" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="1680" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="dom_skill" value="技能系统 Domain&#10;&#10;Skill · Character · Buff&#10;damage_formula · cooldown&#10;interrupt_rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="690" width="300" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="dom_quest" value="Quest / 3D Domain (新增)&#10;&#10;Quest · QuestStep · Trigger&#10;Scene · NavGrid · Entity&#10;DialogueGraph · geom.Vec3/BBox" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="390" y="690" width="300" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="dom_action" value="Action / Event&#10;&#10;CastSkill · MoveTo · Interact&#10;Dialogue · Save · Load&#10;EventLog (append-only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="690" width="300" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="dom_inv" value="Invariant DSL&#10;&#10;ALWAYS / AFTER / EVENTUALLY&#10;hp_nonneg · cooldown_monotonic&#10;quest_step_reachable · nav_connected&#10;save_load_round_trip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="690" width="300" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="dom_tc" value="TestCase / TestPlan&#10;&#10;YAML ↔ Pydantic&#10;seed · actions · assertions&#10;TestSuiteResult (suite.json)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="690" width="300" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="adapter" value="GameAdapter (ABC)&#10;reset(seed) · step(action) · get_trace() · snapshot() · restore(bytes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="860" width="800" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sandbox_banner" value="Sandbox 实现 · 双沙箱 + Unity proto 骨架" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="1680" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pysim" value="PySim Sandbox&#10;&#10;skill 系统仿真 · 固定 tick&#10;v1 (golden baseline)&#10;v2 (植入 5 个 BUG-001~005)&#10;冷却 / buff / 状态机 / DoT / 确定性" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="965" width="520" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="questsim" value="QuestSim Sandbox (D12–D18 新增)&#10;&#10;任务 + 3D 场景 + 寻路 + 存档&#10;quest_runtime · nav (A* + SCC)&#10;dialogue_runtime · save_codec&#10;PhysicsBackend: dummy / pybullet&#10;v1 / v2 (植入 Q-BUG-001~005)&#10;示例场景: 初识港口 (分支 + 汇流)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="610" y="965" width="520" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="unity" value="Unity Adapter (proto 骨架)&#10;&#10;gameguard_v1.proto (gRPC)&#10;Python client stub&#10;UnityBridge.cs (C# 端骨架)&#10;mock 模式返回预录轨迹&#10;面试讲跨领域扩展点" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="965" width="520" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reports_banner" value="Reports · CI 产物" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1130" width="1680" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_bug" value="BugReport (Jira-compatible)&#10;bug_id · severity · component&#10;repro_steps · invariant_violated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1160" width="510" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_md" value="Markdown 报告&#10;suite.md · bugs.md&#10;dev-log 友好格式" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="610" y="1160" width="510" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_html" value="HTML 报告 (Jinja2)&#10;regress 差分: NEW / FIXED / FLAKY&#10;trace + snapshot 链接" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1160" width="510" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bug_list" value="v2 植入 BUG · 实证分类 (参考 NetEase Wuji + TITAN 2025)&#10;&#10;PySim:  BUG-001 冷却错误 · BUG-002 Buff 叠加 · BUG-003 状态机死锁 · BUG-004 DoT 浮点累积 · BUG-005 暴击 RNG 未注入 seed&#10;QuestSim: Q-BUG-001 AABB 边界 · Q-BUG-002 分支死锁 · Q-BUG-003 NPC 漏重置 · Q-BUG-004 存档丢字段 · Q-BUG-005 nav 孤岛" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=middle;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1265" width="1680" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_cli_orch" style="endArrow=classic;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="cli" target="orch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_orch_d" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="orch" target="ag_design">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_orch_t" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="orch" target="ag_testgen">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_orch_e" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="orch" target="ag_exec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_orch_tr" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="orch" target="ag_triage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_orch_c" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="orch" target="ag_critic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_d_td" style="endArrow=classic;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=1.2;" edge="1" parent="1" source="ag_design" target="tool_doc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t_tt" style="endArrow=classic;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=1.2;" edge="1" parent="1" source="ag_testgen" target="tool_testgen">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_e_ts" style="endArrow=classic;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=1.2;" edge="1" parent="1" source="ag_exec" target="tool_sandbox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_tr_ttr" style="endArrow=classic;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=1.2;" edge="1" parent="1" source="ag_triage" target="tool_triage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_c_tc" style="endArrow=classic;html=1;rounded=0;strokeColor=#9673a6;strokeWidth=1.2;dashed=1;" edge="1" parent="1" source="ag_critic" target="tool_critic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_tool_dom" value="读取 / 写入" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="615" as="sourcePoint" />
+            <mxPoint x="880" y="650" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_dom_adapter" value="step(action) · 断言 view" style="endArrow=classic;html=1;rounded=0;strokeColor=#b46504;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="820" as="sourcePoint" />
+            <mxPoint x="880" y="860" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_adapter_py" style="endArrow=block;endFill=0;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=1.8;" edge="1" parent="1" source="pysim" target="adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_adapter_q" style="endArrow=block;endFill=0;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=1.8;" edge="1" parent="1" source="questsim" target="adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_adapter_u" style="endArrow=block;endFill=0;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=1.8;dashed=1;" edge="1" parent="1" source="unity" target="adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_triage_report" value="聚类 → BugReport" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.5;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="ag_triage" target="rep_bug">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="1140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_exec_report" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.2;dashed=1;" edge="1" parent="1" source="ag_exec" target="rep_html">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="1140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="llm_title" value="LLM Stack&#10;(所有 Agent 共享)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#2d862d;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="460" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_client" value="LiteLLM Client&#10;provider-agnostic" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1485" y="505" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_model" value="Zhipu GLM-4.7&#10;DeepSeek-V3 (fallback)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1485" y="565" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_cache" value="Cache (content-addr)&#10;deterministic mode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1485" y="625" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_trace" value="JSONL Trace&#10;token + $ 统计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1485" y="685" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_ag_llm" value="tool-calling&#10;(所有 agent)" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=1.2;dashed=1;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1680" y="390" as="sourcePoint" />
+            <mxPoint x="1570" y="505" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1700" y="505" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="side_input" value="输入 · 文档 / 手写 YAML" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="10" y="150" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="doc_v1" value="docs/example_skill_v1.md&#10;docs/example_quest_harbor.md&#10;(策划文档)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="10" y="175" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="yaml_plan" value="testcases/*.yaml&#10;手写 / Agent 生成 TestPlan&#10;(进 git · 可 review)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="10" y="245" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_doc_design" style="endArrow=classic;html=1;rounded=0;strokeColor=#d6b656;strokeWidth=1.2;dashed=1;" edge="1" parent="1" source="doc_v1" target="ag_design">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_yaml_exec" style="endArrow=classic;html=1;rounded=0;strokeColor=#d6b656;strokeWidth=1.2;dashed=1;" edge="1" parent="1" source="yaml_plan" target="ag_exec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="图例：实线=调用/依赖　　虚线=可选 / 数据流 / stretch　　空心三角=继承 (implements GameAdapter)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#888888;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1355" width="1680" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

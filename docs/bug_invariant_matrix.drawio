@@ -1,0 +1,150 @@
+<mxfile host="app.diagrams.net" agent="drawio-skill" version="24.0.0">
+  <diagram id="bug-matrix" name="Bug Detection Matrix">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="植入 Bug  ↔  检测不变式  映射矩阵" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="10" width="840" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="v2 每个 bug 都被至少一条 invariant oracle 抓到 · 参考 NetEase Wuji (ASE 2019) 1349 bug 4 类实证分类" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="160" y="46" width="1280" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="col_bug" value="v2 植入 Bug (10 个)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="85" width="560" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="col_inv" value="检测 Invariant (14 条)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#2d862d;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="85" width="560" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grp_pysim" value="PySim v2  ·  技能系统" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;align=center;verticalAlign=top;spacingTop=6;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="560" height="430" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b1" value="BUG-001  冷却错误&#10;切换技能瞬间错误清空所有 cooldown&#10;(状态污染)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="165" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="BUG-002  Buff 叠加规则&#10;同 buff refresh 错误累加 magnitude (应替换)&#10;(数值溢出)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="235" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="BUG-003  状态机死锁&#10;打断未退款 mp + meta 标记骗人&#10;(状态机泄漏)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="305" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="BUG-004  DoT 浮点累积&#10;高 tick 率下浮点累加误差超容忍&#10;(浮点精度)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="375" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" value="BUG-005  暴击 RNG 未注入 seed&#10;用全局 random 而非 sandbox RNG&#10;(确定性破坏)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="445" width="520" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grp_quest" value="QuestSim v2  ·  任务 / 3D / 寻路 / 存档" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;align=center;verticalAlign=top;spacingTop=6;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="585" width="560" height="430" as="geometry" />
+        </mxCell>
+
+        <mxCell id="q1" value="Q-BUG-001  AABB 相切边界&#10;TriggerVolume.contains 用 &lt; 而非 &lt;=&#10;(边界条件)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="620" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="q2" value="Q-BUG-002  分支死锁&#10;商人分支漏 set alliance flag&#10;(状态机 / flag 管理)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="690" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="q3" value="Q-BUG-003  NPC 漏重置&#10;quest_reset 只重置 pos 不重置 state.dict&#10;(状态机泄漏)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="760" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="q4" value="Q-BUG-004  存档丢字段&#10;JSON 序列化替代 pickle，丢 Enum/Vec3&#10;(序列化)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="830" width="520" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="q5" value="Q-BUG-005  NavGrid 孤岛&#10;场景加载误标 blocked，仓库入口成孤岛&#10;(场景数据)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="900" width="520" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="i1" value="cooldown_at_least_after_cast" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="130" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="i2" value="buff_refresh_magnitude_stable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="190" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="i3a" value="mp_nonneg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="250" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="i3b" value="interrupt_refunds_mp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="250" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="i4" value="dot_total_damage_within_tolerance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="310" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="i5" value="replay_deterministic" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="370" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="iq1" value="trigger_volume_fires_on_enter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="620" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq2a" value="quest_step_reachable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="680" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq2b" value="quest_no_orphan_flag" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="680" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq3" value="npc_respawn_on_reset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="740" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq4" value="save_load_round_trip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="830" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq5a" value="path_exists_between" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="900" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iq5b" value="no_stuck_positions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="900" width="240" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_b1_i1" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="b1" target="i1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b2_i2" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="b2" target="i2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b3_i3a" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="b3" target="i3a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b3_i3b" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="b3" target="i3b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b4_i4" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="b4" target="i4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_b5_i5" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="b5" target="i5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_q1_iq1" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="q1" target="iq1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q2_iq2a" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="q2" target="iq2a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q2_iq2b" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="q2" target="iq2b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q3_iq3" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="q3" target="iq3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q4_iq4" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="q4" target="iq4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q5_iq5a" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="q5" target="iq5a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_q5_iq5b" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=1.8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="q5" target="iq5b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bottom_note" value="差分测试：同一 plan 在 v1 上 100% pass，在 v2 上精确 10 条 NEW failure · 每条 NEW 由 TriageAgent 自动产出 Jira-compatible BugReport" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#888888;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1030" width="1520" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

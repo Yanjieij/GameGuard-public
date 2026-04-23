@@ -1,0 +1,33 @@
+// Unity Packages/manifest.json 片段示例（复制到真实 Unity 项目时用）。
+// 本文件不会被 Unity 自动读取——只是给 Unity 开发者参考。
+//
+// ============================================================================
+//
+// {
+//   "dependencies": {
+//     "com.cysharp.unitask": "2.5.0",
+//     "com.cysharp.magiconion": "5.1.9",
+//     "com.cysharp.magiconion.client.unity": "5.1.9",
+//     "com.google.external-dependency-manager": "1.2.177",
+//     "com.google.protobuf": "3.21.12"
+//   },
+//   "scopedRegistries": [
+//     {
+//       "name": "Cysharp Gist (MagicOnion)",
+//       "url": "https://pkgs.dev.azure.com/cysharp/MagicOnion/_packaging/MagicOnion/npm/registry/",
+//       "scopes": ["com.cysharp"]
+//     }
+//   ]
+// }
+//
+// ============================================================================
+//
+// Grpc.Core DLL 需要手动放 Assets/Plugins/（MagicOnion.Client.Unity 包附带），
+// 参考 https://cysharp.github.io/MagicOnion/articles/fundamentals/installation.html
+//
+// 生成 C# proto 代码：
+//   dotnet tool install --global MagicOnion.Generator
+//   moc -i gameguard_v1.proto -o Assets/Generated/GameGuard/
+//
+// 编译后 UnityBridge.cs + GameGuardSandboxService.cs + MainThreadDispatcher.cs
+// 放到 Assets/Scripts/GameGuard/ 即可。

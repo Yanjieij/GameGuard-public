@@ -1,0 +1,101 @@
+# ============================================================================ #
+# GameGuard .gitignore
+# 原则：代码 + 文档 + 可 review 的配置进 git；运行产物 / 缓存 / 密钥不进 git
+# ============================================================================ #
+
+# --- 密钥 / 环境配置 --------------------------------------------------------
+# .env 里有 API key，绝对不能提交
+.env
+.env.local
+.env.*.local
+# 允许 example 作为模板进 git
+!.env.example
+
+# --- Python 产物 -----------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# setuptools / pip 安装产物
+*.egg-info/
+*.egg
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+
+# --- 测试 / 类型 / Lint 缓存 ------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/          # hypothesis shrinking DB，每次跑会变
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.tox/
+.nox/
+
+# --- GameGuard 运行产物 -----------------------------------------------------
+# artifacts/ 下是每次跑产生的 trace / snapshot / report / suite.json
+# 保留目录结构（.gitkeep）方便新 clone 能直接跑
+artifacts/traces/*
+artifacts/snapshots/*
+artifacts/reports/*
+artifacts/regress/*
+artifacts/suite.json
+artifacts/*.json
+!artifacts/**/.gitkeep
+
+# LLM 磁盘缓存（content-addressed）。本地跑有用，push 远端无意义
+.cache/
+.llm_cache/
+
+# --- 虚拟环境 --------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+# conda env 本身不在仓库里（environment.yml 已声明），但以防万一
+.conda/
+
+# --- IDE / 编辑器 -----------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# --- Jupyter ---------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# --- macOS / Windows / Linux 系统文件 ---------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- 私人笔记（如果你在项目里随手写） --------------------------------------
+# 面试准备时的个人笔记，避免误推上去
+NOTES.md
+notes.md
+scratch/
+TODO.local.md
+
+# --- drawio 自动备份 -------------------------------------------------------
+*.bkp
+*.drawio.bkp
+
+# --- Eval 运行产物 ---
+# evals/ 代码进 git；但每个 eval 的 runtime artifacts 在 artifacts/evals/ 下
+artifacts/evals/

@@ -1,0 +1,404 @@
+id: w1-restore
+name: Agent 生成 · 技能系统回归
+description: ''
+version: 0.1.0
+cases:
+  - id: basic-casting-hp-mp-cooldown
+    name: 基础施法测试：HP/MP非负与冷却检查
+    description: 测试基础施法功能，验证HP/MP始终非负，以及火球术、寒冰箭、点燃、奥术凝神的冷却时间正确开始
+    tags:
+      - skill
+      - cooldown
+      - hp-mp
+    strategy: contract
+    derived_from:
+      - invariant:I-01-p1
+      - invariant:I-01-dummy
+      - invariant:I-02-p1
+      - invariant:I-02-dummy
+      - invariant:I-03-fireball
+      - invariant:I-03-frostbolt
+      - invariant:I-03-ignite
+      - invariant:I-03-focus
+    seed: 42
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.1
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.1
+    assertions:
+      - invariant:
+          id: I-01-p1
+          description: Player (p1) 的 HP 必须始终非负
+          kind: hp_nonneg
+          actor: p1
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-01-dummy
+          description: Training Dummy (dummy) 的 HP 必须始终非负
+          kind: hp_nonneg
+          actor: dummy
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-02-p1
+          description: Player (p1) 的 MP 必须始终非负
+          kind: mp_nonneg
+          actor: p1
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-02-dummy
+          description: Training Dummy (dummy) 的 MP 必须始终非负
+          kind: mp_nonneg
+          actor: dummy
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-03-fireball
+          description: 火球术 (skill_fireball) 施法完成后，冷却时间应从 8s 开始递减
+          kind: cooldown_at_least_after_cast
+          actor: p1
+          skill: skill_fireball
+          expected_cooldown: 8.0
+          tolerance: 0.05
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-03-frostbolt
+          description: 寒冰箭 (skill_frostbolt) 施法完成后，冷却时间应从 6s 开始递减
+          kind: cooldown_at_least_after_cast
+          actor: p1
+          skill: skill_frostbolt
+          expected_cooldown: 6.0
+          tolerance: 0.05
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-03-ignite
+          description: 点燃 (skill_ignite) 施法完成后，冷却时间应从 12s 开始递减
+          kind: cooldown_at_least_after_cast
+          actor: p1
+          skill: skill_ignite
+          expected_cooldown: 12.0
+          tolerance: 0.05
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-03-focus
+          description: 奥术凝神 (skill_focus) 施法完成后，冷却时间应从 20s 开始递减
+          kind: cooldown_at_least_after_cast
+          actor: p1
+          skill: skill_focus
+          expected_cooldown: 20.0
+          tolerance: 0.05
+        when: end_of_run
+        on_event_kind:
+  - id: cooldown-isolation-fireball-frostbolt
+    name: 冷却独立性测试：火球术与寒冰箭
+    description: 测试火球术冷却期间释放寒冰箭不会改变火球术的剩余冷却时间
+    tags:
+      - cooldown
+      - skill
+    strategy: contract
+    derived_from:
+      - invariant:I-04-fireball-frostbolt
+    seed: 43
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.1
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+    assertions:
+      - invariant:
+          id: I-04-fireball-frostbolt
+          description: 火球术 (skill_fireball) 冷却期间释放寒冰箭 (skill_frostbolt) 
+            不得改变火球术的剩余冷却
+          kind: cooldown_at_least_after_cast
+          actor: p1
+          skill: skill_fireball
+          expected_cooldown: 8.0
+          tolerance: 0.05
+        when: end_of_run
+        on_event_kind:
+  - id: buff-refresh-magnitude-stable
+    name: buff刷新测试：magnitude稳定性
+    description: 测试chilled、burn、arcane_power三种buff在刷新时magnitude保持稳定不叠加
+    tags:
+      - buff
+      - refresh
+    strategy: contract
+    derived_from:
+      - invariant:I-05-chilled
+      - invariant:I-05-burn
+      - invariant:I-05-arcane-power
+    seed: 44
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.1
+      - kind: wait
+        seconds: 6.0
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+      - kind: wait
+        seconds: 12.0
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: wait
+        seconds: 20.0
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.1
+    assertions:
+      - invariant:
+          id: I-05-chilled
+          description: buff_chilled 的 magnitude 必须始终等于表值 0.3（refresh 语义下不叠加）
+          kind: buff_refresh_magnitude_stable
+          actor: dummy
+          buff: buff_chilled
+          expected_magnitude: 0.3
+          tolerance: 1e-06
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-05-burn
+          description: buff_burn 的 magnitude 必须始终等于表值 10（refresh 语义下不叠加）
+          kind: buff_refresh_magnitude_stable
+          actor: dummy
+          buff: buff_burn
+          expected_magnitude: 10.0
+          tolerance: 1e-06
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-05-arcane-power
+          description: buff_arcane_power 的 magnitude 必须始终等于表值 0.2（refresh 
+            语义下不叠加）
+          kind: buff_refresh_magnitude_stable
+          actor: p1
+          buff: buff_arcane_power
+          expected_magnitude: 0.2
+          tolerance: 1e-06
+        when: end_of_run
+        on_event_kind:
+  - id: buff-stack-limit-test
+    name: buff层数限制测试
+    description: 测试chilled、burn、arcane_power三种buff的层数不超过最大限制1层
+    tags:
+      - buff
+      - stack
+    strategy: contract
+    derived_from:
+      - invariant:I-06-chilled
+      - invariant:I-06-burn
+      - invariant:I-06-arcane-power
+    seed: 45
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.1
+      - kind: wait
+        seconds: 2.0
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.6
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.1
+    assertions:
+      - invariant:
+          id: I-06-chilled
+          description: buff_chilled 的 stack 数量不能超过最大 stack 限制 1
+          kind: buff_stacks_within_limit
+          actor: dummy
+          buff: buff_chilled
+          max_stacks: 1
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-06-burn
+          description: buff_burn 的 stack 数量不能超过最大 stack 限制 1
+          kind: buff_stacks_within_limit
+          actor: dummy
+          buff: buff_burn
+          max_stacks: 1
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-06-arcane-power
+          description: buff_arcane_power 的 stack 数量不能超过最大 stack 限制 1
+          kind: buff_stacks_within_limit
+          actor: p1
+          buff: buff_arcane_power
+          max_stacks: 1
+        when: end_of_run
+        on_event_kind:
+  - id: interrupt-clear-casting-and-refund
+    name: 打断测试：清除施法状态与MP退款
+    description: 测试打断奥术凝神后，施法状态被清除且MP正确退款
+    tags:
+      - interrupt
+      - mp
+    strategy: contract
+    derived_from:
+      - invariant:I-07-p1
+      - invariant:I-08-focus
+    seed: 46
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 0.5
+      - kind: interrupt
+        actor: p1
+      - kind: wait
+        seconds: 0.1
+    assertions:
+      - invariant:
+          id: I-07-p1
+          description: Player (p1) 被打断后，casting_skill 必须为 None 且状态为 IDLE
+          kind: interrupt_clears_casting
+          actor: p1
+        when: end_of_run
+        on_event_kind:
+      - invariant:
+          id: I-08-focus
+          description: Player (p1) 施放奥术凝神 (skill_focus) 被打断后，必须退还 MP 且事件 
+            meta.mp_refunded 为 True
+          kind: interrupt_refunds_mp
+          actor: p1
+          skill: skill_focus
+          tolerance: 1e-06
+        when: end_of_run
+        on_event_kind:
+  - id: burn-damage-over-time-test
+    name: 燃烧伤害测试：buff过期累积伤害
+    description: 测试burn buff在目标上过期时，累积的燃烧伤害接近magnitude * duration (10 * 4.0 = 
+      40)
+    tags:
+      - buff
+      - damage
+      - dot
+    strategy: contract
+    derived_from:
+      - invariant:I-09-burn
+    seed: 47
+    sandbox: pysim:v1
+    timeout_ticks: 10000
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 0.1
+      - kind: wait
+        seconds: 4.5
+    assertions:
+      - invariant:
+          id: I-09-burn
+          description: buff_burn 在目标上过期时，累积的燃烧伤害应接近 magnitude * duration (10 * 
+            4.0 = 40)，误差 ≤ 0.5
+          kind: buff_refresh_magnitude_stable
+          actor: dummy
+          buff: buff_burn
+          expected_magnitude: 10.0
+          tolerance: 1e-06
+        when: end_of_run
+        on_event_kind:
+plan_assertions: []

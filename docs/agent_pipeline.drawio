@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net" agent="drawio-skill" version="24.0.0">
+  <diagram id="agent-pipeline" name="Agent Pipeline">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1480" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="GameGuard · plan-and-execute 双阶段数据流" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="10" width="1000" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="让昂贵 / 有随机性的 Plan 阶段尽量短，让 CI / 回归走纯确定性路径" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="240" y="46" width="1000" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="plan_lane" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=0;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="700" height="900" as="geometry" />
+        </mxCell>
+        <mxCell id="plan_lane_title" value="① Plan 阶段 · LLM 参与 · 花钱 / 可缓存 / 产物进 git 复用" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#2d862d;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="700" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="exec_lane" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=0;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="760" y="90" width="700" height="900" as="geometry" />
+        </mxCell>
+        <mxCell id="exec_lane_title" value="② Execute 阶段 · 纯确定性 · seed 决定结果 · CI 可重复" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#b46504;" vertex="1" parent="1">
+          <mxGeometry x="760" y="100" width="700" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="doc_in" value="策划文档&#10;docs/example_skill_v1.md&#10;docs/example_quest_harbor.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="230" y="150" width="320" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="design_agent" value="DesignDocAgent&#10;&#10;工具: list_docs · list_doc_sections&#10;       read_doc_section · emit_invariant&#10;&#10;LLM: 浏览目录 → 读关键节 → 抽机器可验证不变式" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="130" y="260" width="520" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="invariant_out" value="InvariantBundle&#10;19 种 kind · Pydantic discriminated union" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="210" y="400" width="360" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="testgen_agent" value="TestGenAgent&#10;&#10;工具: list_invariants · list_skills · list_quests&#10;       list_entities · emit_testcase · finalize&#10;&#10;双模式: discovery (LLM 主动浏览) / prefetch (省钱)&#10;策略: Contract / Property / Exploratory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="100" y="510" width="580" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="critic_agent" value="CriticAgent (stretch · review_hook)&#10;&#10;工具: inspect_case · propose_fix · drop_case · accept_all&#10;&#10;对每条生成用例：静态校验 → LLM 决策 accept / patch / drop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="680" width="580" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="plan_out" value="TestPlan.yaml&#10;进 git · 可像 code 一样 review&#10;seed · actions · assertions" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="210" y="830" width="360" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="runner" value="Runner + Sandbox&#10;&#10;for case in plan:&#10;  reset(seed)&#10;  for action in actions: step(action)&#10;  for inv in assertions: evaluate(inv, view, log)&#10;&#10;落盘: EventLog (JSONL) · Snapshot · suite.json&#10;Sandbox: pysim v1/v2 · questsim v1/v2 · unity:mock" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;align=left;verticalAlign=middle;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="820" y="260" width="580" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="suite_result" value="TestSuiteResult&#10;PASSED / FAILED / ERROR 三态 · trace + snapshot 路径" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="900" y="450" width="420" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="branch_q" value="有 FAILED / ERROR 吗？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="980" y="560" width="260" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="triage_agent" value="TriageAgent&#10;&#10;Stage 1 规则聚类 (kind + invariant_id + actor)&#10;Stage 2 LLM-as-judge (size&gt;1 的簇)&#10;&#10;工具: list_failures · emit_bug_report · merge_clusters" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="820" y="670" width="580" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bugreport" value="BugReport (Jira-compatible)&#10;bug_id · severity · component · repro_steps · invariant_violated" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="820" y="830" width="580" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="regress_box" value="regress 模式: 同 plan 跑两次 (baseline/candidate) → RegressDiff (NEW / FIXED / FLAKY / STABLE) → Jinja2 HTML 报告" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=2;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="820" y="930" width="580" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_doc_agent" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="doc_in" target="design_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_agent_inv" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="design_agent" target="invariant_out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_inv_tg" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="invariant_out" target="testgen_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_tg_critic" value="可选" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;dashed=1;fontSize=10;" edge="1" parent="1" source="testgen_agent" target="critic_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_critic_plan" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="critic_agent" target="plan_out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_lane_cross" value="YAML 产物跨越阶段&#10;(可 review / 可复用 / 无随机性)" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=3;fontSize=11;fontStyle=1;" edge="1" parent="1" source="plan_out" target="runner">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="875" />
+              <mxPoint x="740" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_runner_suite" style="endArrow=classic;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="1" source="runner" target="suite_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_suite_branch" style="endArrow=classic;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="1" source="suite_result" target="branch_q">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_branch_triage" value="是" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=2;fontSize=11;fontStyle=1;" edge="1" parent="1" source="branch_q" target="triage_agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_triage_bug" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="triage_agent" target="bugreport">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_bug_regress" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="bugreport" target="regress_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="图例：绿=LLM 参与　橙=纯确定性　红=失败处理路径　虚线=可选 / stretch" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#888888;" vertex="1" parent="1">
+          <mxGeometry x="240" y="1010" width="1000" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

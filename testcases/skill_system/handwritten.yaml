@@ -1,0 +1,490 @@
+# ============================================================================
+# 手写回归用例集 —— GameGuard D3 闭环验证用
+# ============================================================================
+#
+# 这份文件的作用：在引入 LLM Agent 之前，先确认 Runner + 沙箱 + Invariant
+# DSL 三条腿都站得稳。所有用例 **必须** 在 `pysim:v1` 上全部通过；
+# 接入 `pysim:v2`（D6）之后，预期 BUG-001 ~ BUG-005 会让其中 4–5 条失败。
+#
+# 每条 `derived_from` 都指回策划文档里的不变式章节，让需求-实现-测试
+# 三角关系可追溯（这是飞书 / TestRail 工业实践的常见做法）。
+#
+# ----------------------------------------------------------------------------
+# 一些读写约定：
+#   - `kind` 字段是联合类型的判别器，必须填（见 loader.py 的说明）
+#   - 时间一律是秒；tick_dt = 0.05s，所以 `seconds: 0.05` = 1 tick
+#   - 每条 case 独立 reset(seed)，seed 不同 => 暴击序列不同
+# ============================================================================
+
+id: skill_system.handwritten
+name: 技能系统 · 手写回归用例集
+description: >
+  在 LLM Agent 接入前的手写冒烟+回归套件。覆盖策划文档 v1 的 8 条
+  机器可验证不变式（I-01 ~ I-08）。I-09（DoT 累积）和 I-10（重放确定性）
+  需要专用 evaluator，D8/D12 再补。
+version: "0.3.0"
+
+cases:
+
+  # ------------------------------------------------------------------------
+  # 用例 1：最小冒烟 —— 一次火球术的完整施法链路
+  # ------------------------------------------------------------------------
+  - id: smoke-fireball-single-cast
+    name: 火球术单次施法全流程
+    description: |
+      验证单次 Fireball 施法完成的全部副作用：
+      进入 CASTING → cast_time 流逝 → 伤害结算 → 冷却开始 → 回到 IDLE。
+      同时抽查 HP/MP 非负这两条最基础的 ALWAYS 不变式。
+    tags: [smoke, skill, fireball]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#4.-技能数据表"
+      - "docs/example_skill_v1.md#I-01"
+      - "docs/example_skill_v1.md#I-02"
+      - "docs/example_skill_v1.md#I-03"
+    seed: 42
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.0        # cast_time
+      - kind: wait
+        seconds: 1.0        # 进入冷却后再观察一秒
+    assertions:
+      - invariant:
+          kind: hp_nonneg
+          id: I-01-p1
+          description: Player HP 始终非负
+          actor: p1
+        when: end_of_run
+      - invariant:
+          kind: hp_nonneg
+          id: I-01-dummy
+          description: Dummy HP 始终非负
+          actor: dummy
+        when: end_of_run
+      - invariant:
+          kind: mp_nonneg
+          id: I-02-p1
+          description: Player MP 始终非负
+          actor: p1
+        when: end_of_run
+      - invariant:
+          kind: cooldown_at_least_after_cast
+          id: I-03-fireball
+          description: Fireball 冷却从 8s 起线性递减
+          actor: p1
+          skill: skill_fireball
+          expected_cooldown: 8.0
+          tolerance: 0.1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 2：冷却隔离 —— BUG-001 的直接 oracle
+  # ------------------------------------------------------------------------
+  - id: cooldown-isolation-fireball-then-frostbolt
+    name: 切换技能不应重置前一个技能的冷却
+    description: |
+      Fireball 进入 8s 冷却后立刻切 Frostbolt 施法。切换动作本身不应
+      影响 Fireball 剩余冷却（I-04）。这是 v2 BUG-001 的直接触发路径。
+    tags: [regression, skill, cooldown, BUG-001]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-04"
+      - "bug:BUG-001"
+    seed: 1
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.0        # Fireball 完成，CD = 8
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5        # Frostbolt 完成
+    assertions:
+      # 此时 Fireball 的冷却预期 ≈ 8 - 1.5 = 6.5s
+      - invariant:
+          kind: cooldown_at_least_after_cast
+          id: I-04-fireball-isolated
+          description: 切技能不应缩短/重置 Fireball 的冷却
+          actor: p1
+          skill: skill_fireball
+          expected_cooldown: 8.0
+          tolerance: 0.1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 3：Buff 刷新不叠加 magnitude —— BUG-002 的直接 oracle
+  # ------------------------------------------------------------------------
+  - id: buff-chilled-refresh-magnitude-stable
+    name: Chilled 刷新时 magnitude 必须稳定
+    description: |
+      两次 Frostbolt 之间等到冷却结束再打第二发；第二次命中会触发
+      refresh（同 buff 已存在）。设计规范要求 refresh 只刷新持续时间，
+      不叠加 magnitude。这是 v2 BUG-002 的直接触发路径。
+    tags: [regression, buff, refresh, BUG-002]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#5.1-stack-rule-语义"
+      - "docs/example_skill_v1.md#I-05"
+      - "bug:BUG-002"
+    seed: 2
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5        # 第一发完成，Chilled 施加
+      - kind: wait
+        seconds: 6.0        # 等 CD 过（CD = 6s）
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5        # 第二发完成，Chilled refresh
+    assertions:
+      - invariant:
+          kind: buff_refresh_magnitude_stable
+          id: I-05-chilled
+          description: Chilled refresh 后 magnitude 保持 0.3
+          actor: dummy
+          buff: buff_chilled
+          expected_magnitude: 0.3
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 4：Buff stack 上限（I-06）
+  # ------------------------------------------------------------------------
+  - id: buff-chilled-stacks-within-limit
+    name: Chilled 在多次施加后 stack <= 1
+    description: |
+      refresh 规则下，同名 buff 的 stack 数应恒 ≤ 1。连续几次 Frostbolt
+      之后检查 stack 数。
+    tags: [regression, buff, stacks]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-06"
+    seed: 3
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5
+      - kind: wait
+        seconds: 6.0
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5
+    assertions:
+      - invariant:
+          kind: buff_stacks_within_limit
+          id: I-06-chilled
+          description: Chilled 最多 1 层
+          actor: dummy
+          buff: buff_chilled
+          max_stacks: 1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 5：打断清除施法字段（I-07）
+  # ------------------------------------------------------------------------
+  - id: interrupt-clears-casting
+    name: 打断后 casting_skill 必须清空
+    description: |
+      Arcane Focus 施法耗时 2s；在 0.5s 时打断，期望立刻回到 IDLE 且
+      `casting_skill is None`。这是 v2 BUG-003（状态机死锁）的 oracle
+      之一。
+    tags: [regression, interrupt, state-machine, BUG-003]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-07"
+      - "bug:BUG-003"
+    seed: 4
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 0.5
+      - kind: interrupt
+        actor: p1
+      - kind: wait
+        seconds: 0.5        # 留一点余量，观察状态稳定
+    assertions:
+      - invariant:
+          kind: interrupt_clears_casting
+          id: I-07-p1
+          description: 打断后 p1 退出 CASTING
+          actor: p1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 6：打断退款 MP（I-08）
+  # ------------------------------------------------------------------------
+  - id: interrupt-refunds-mp
+    name: 打断 Arcane Focus 应全额退款 MP
+    description: |
+      Arcane Focus MP 消耗 20；施法中打断，期望事件元数据中
+      `mp_refunded == True`。这是 v2 BUG-003 的第二个 oracle。
+    tags: [regression, interrupt, economy, BUG-003]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-08"
+      - "bug:BUG-003"
+    seed: 5
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 0.5
+      - kind: interrupt
+        actor: p1
+    assertions:
+      - invariant:
+          kind: interrupt_refunds_mp
+          id: I-08-focus
+          description: 打断 Arcane Focus 退款 mp_cost=20
+          actor: p1
+          skill: skill_focus
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 7：MP 非负（I-02）—— 长会话
+  # ------------------------------------------------------------------------
+  - id: mp-nonneg-long-session
+    name: 连续施法中 MP 始终非负
+    description: |
+      连打多次技能，期望沙箱拒绝超过 MP 的施法而不是把 MP 扣成负数。
+      验证 I-02。
+    tags: [smoke, economy]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-02"
+    seed: 6
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy        # 25 MP
+      - kind: wait
+        seconds: 2.0
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy        # 40 MP, instant
+      - kind: wait
+        seconds: 0.5
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1           # 20 MP, 2s cast
+      - kind: wait
+        seconds: 2.5
+    assertions:
+      - invariant:
+          kind: mp_nonneg
+          id: I-02-long
+          description: p1 MP 全程非负
+          actor: p1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 8：HP 非负（I-01）—— 目标被击杀
+  # ------------------------------------------------------------------------
+  - id: hp-nonneg-target-killed
+    name: 目标被击杀后 HP 停在 0 而非负
+    description: |
+      连续高爆发输出直到 dummy 被杀。HP 归零后应被封顶而不是继续
+      扣成负数；这是玩家看到的"死亡瞬间表现"的健全性。
+    tags: [smoke, damage]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-01"
+    seed: 7
+    sandbox: "pysim:v1"
+    # dummy 1000 HP。Fireball 基础 50 伤，暴击最多 75；这里我们不指望
+    # 真杀死它，只验证永不负数。
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.0
+    assertions:
+      - invariant:
+          kind: hp_nonneg
+          id: I-01-dummy-live
+          description: dummy HP >= 0
+          actor: dummy
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 9：Arcane Power 刷新不叠加 magnitude
+  # ------------------------------------------------------------------------
+  - id: buff-arcane-power-refresh-stable
+    name: Arcane Power 刷新时 magnitude 稳定
+    description: |
+      Arcane Focus CD 20s；测试期望在 CD 过后再施一次，buff 刷新后
+      magnitude 仍为 0.2。
+    tags: [regression, buff, refresh]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-05"
+    seed: 8
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.0
+      - kind: wait
+        seconds: 20.5       # 过 CD
+      - kind: cast
+        actor: p1
+        skill: skill_focus
+        target: p1
+      - kind: wait
+        seconds: 2.0
+    assertions:
+      - invariant:
+          kind: buff_refresh_magnitude_stable
+          id: I-05-arcane-power
+          description: Arcane Power refresh 后 magnitude 保持 0.2
+          actor: p1
+          buff: buff_arcane_power
+          expected_magnitude: 0.2
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 10：Burn DoT 应用与 max_stacks 一致
+  # ------------------------------------------------------------------------
+  - id: buff-burn-stacks-within-limit
+    name: Burn DoT stack 不超上限
+    description: |
+      Ignite 技能 CD 12s；即便在短时间内反复命中，Burn 的 stack 仍应 <= 1。
+    tags: [regression, buff, dot]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-06"
+    seed: 9
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy       # 瞬发
+      - kind: wait
+        seconds: 0.5
+      # 注意：这里第二次 cast 会在 CD 内被沙箱拒绝；Runner 会抛出
+      # RuntimeError -> ERROR 状态。所以我们只测 stack 不超上限。
+      - kind: wait
+        seconds: 2.0
+    assertions:
+      - invariant:
+          kind: buff_stacks_within_limit
+          id: I-06-burn
+          description: Burn 最多 1 层
+          actor: dummy
+          buff: buff_burn
+          max_stacks: 1
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 11：Burn DoT 总伤可预测（I-09）—— BUG-004 直接 oracle
+  # ------------------------------------------------------------------------
+  - id: dot-burn-total-damage-predictable
+    name: Ignite 后 Burn 总伤约等于 magnitude × duration
+    description: |
+      Ignite 瞬发，对 dummy 施加 buff_burn（10/sec × 4s = 40 总伤）。
+      在 buff 结束后累计所有 dot_tick 事件 amount，验证总和 ≈ 40（容忍 1.0）。
+      这是 v2 BUG-004（DoT 漂移系数 1.05）的直接 oracle。
+    tags: [regression, dot, BUG-004]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#4.2-dot-公式"
+      - "docs/example_skill_v1.md#I-09"
+      - "bug:BUG-004"
+    seed: 11
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_ignite
+        target: dummy
+      - kind: wait
+        seconds: 4.5         # 跑完 burn 4s + buffer
+    assertions:
+      - invariant:
+          kind: dot_total_damage_within_tolerance
+          id: I-09-burn
+          description: burn 总伤接近 magnitude × duration
+          actor: dummy
+          buff: buff_burn
+          expected_total: 40.0
+          tolerance: 1.0
+        when: end_of_run
+
+  # ------------------------------------------------------------------------
+  # 用例 12：重放确定性（I-10）—— BUG-005 直接 oracle
+  # ------------------------------------------------------------------------
+  - id: replay-determinism-fireball-frostbolt
+    name: 同 seed 双跑事件序列严格一致
+    description: |
+      同一动作序列在同一 seed 下跑两次，事件 trace 应 byte-for-byte 一致；
+      sim.rng_draws 也必须相等。这是 v2 BUG-005（暴击用全局 random.random()
+      而非 sim.rng）的直接 oracle —— 即使两次序列偶然相同（crit 概率 20%，
+      短序列容易撞），runner 也会通过"trace 含 crit 字段但 rng_draws=0"的
+      智能检测抓住 BUG-005 的根因。
+    tags: [regression, determinism, BUG-005]
+    strategy: handwritten
+    derived_from:
+      - "docs/example_skill_v1.md#I-10"
+      - "bug:BUG-005"
+    seed: 42
+    sandbox: "pysim:v1"
+    actions:
+      - kind: cast
+        actor: p1
+        skill: skill_fireball
+        target: dummy
+      - kind: wait
+        seconds: 1.0
+      - kind: cast
+        actor: p1
+        skill: skill_frostbolt
+        target: dummy
+      - kind: wait
+        seconds: 1.5
+    assertions:
+      - invariant:
+          kind: replay_deterministic
+          id: I-10-fireball-frostbolt
+          description: 同 seed 双跑事件序列与 rng_draws 严格一致
+        when: end_of_run

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest + ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project (editable) + dev tools + unity (grpc)
+        run: |
+          python -m pip install --upgrade pip
+          # [unity] 带 grpcio / grpcio-tools / protobuf，unity E2E 测试需要；
+          # adapter.py 主体做了延迟 import 所以缺 grpc 也能跑 mock/trace 路径，
+          # 但 CI 里一次装全保证 test_unity_e2e.py 的 5 条 E2E 也跑。
+          pip install -e ".[dev,unity]"
+
+      - name: Ruff lint
+        run: ruff check gameguard/
+
+      - name: Pytest with coverage
+        run: |
+          pip install pytest-cov
+          pytest --cov=gameguard --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov (optional)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # 可选：mypy 宽松检查。当前项目没走过 mypy --strict，
+  # 这里只作为健康指标而非阻塞（continue-on-error）。
+  mypy:
+    name: mypy (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Mypy
+        run: mypy gameguard/ --ignore-missing-imports --no-strict-optional || true

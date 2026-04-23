@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>GameGuard Regress Report · {{ diff.plan_id }}</title>
+<style>
+  :root {
+    --green: #28a745;
+    --red: #dc3545;
+    --orange: #fd7e14;
+    --blue: #007bff;
+    --gray: #6c757d;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #dde2e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 24px; background: var(--bg); color: #1a1d23;
+    line-height: 1.5;
+  }
+  h1 { margin-top: 0; font-size: 24px; }
+  h2 { font-size: 18px; border-bottom: 2px solid var(--border); padding-bottom: 4px; margin-top: 32px; }
+  h3 { font-size: 15px; margin: 16px 0 8px; }
+  .meta { color: var(--gray); font-size: 13px; margin-bottom: 16px; }
+  .stat-row { display: flex; gap: 12px; margin: 16px 0; }
+  .stat {
+    flex: 1; padding: 16px; background: var(--card); border-radius: 8px;
+    border: 1px solid var(--border); text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 600; }
+  .stat-label { font-size: 12px; color: var(--gray); text-transform: uppercase; }
+  .verdict-NEW          { background: #ffe4e7; color: var(--red); }
+  .verdict-FIXED        { background: #e0f5e9; color: var(--green); }
+  .verdict-STABLE_FAIL  { background: #fff4e0; color: var(--orange); }
+  .verdict-MISSING_BASELINE,
+  .verdict-MISSING_CANDIDATE { background: #e7e9ec; color: var(--gray); }
+  table {
+    width: 100%; border-collapse: collapse; margin-top: 8px;
+    background: var(--card); border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  th, td {
+    padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  th { background: #f0f2f5; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 3px;
+    font-size: 11px; font-weight: 600;
+  }
+  details {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 16px; margin: 8px 0;
+  }
+  details[open] { background: #fafbfc; }
+  summary {
+    cursor: pointer; font-weight: 500; padding: 4px 0;
+    list-style: none; display: flex; align-items: center; gap: 12px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▶"; color: var(--gray); font-size: 10px; transition: transform 0.15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  .invariant-list { color: var(--red); font-family: SFMono-Regular, Consolas, monospace; font-size: 12px; }
+  .repro {
+    background: #f4f6f9; padding: 12px; border-radius: 4px;
+    font-family: SFMono-Regular, Consolas, monospace; font-size: 12px;
+    margin: 8px 0; white-space: pre-wrap;
+  }
+  .severity-S0 { background: #b00020; color: white; }
+  .severity-S1 { background: var(--red); color: white; }
+  .severity-S2 { background: var(--orange); color: white; }
+  .severity-S3 { background: #ffc107; color: #333; }
+  .footer { margin-top: 48px; color: var(--gray); font-size: 12px; }
+  code { background: #f0f2f5; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>🔬 GameGuard 差分回归报告</h1>
+
+<div class="meta">
+  <strong>Plan</strong> <code>{{ diff.plan_id }}</code>
+  &nbsp;|&nbsp; <strong>Baseline</strong> <code>{{ diff.baseline_sandbox }}</code>
+  &nbsp;|&nbsp; <strong>Candidate</strong> <code>{{ diff.candidate_sandbox }}</code>
+  &nbsp;|&nbsp; 生成于 {{ diff.generated_at.strftime("%Y-%m-%d %H:%M:%S") }}
+</div>
+
+<div class="stat-row">
+  <div class="stat verdict-NEW">
+    <div class="stat-num">{{ diff.new_count }}</div>
+    <div class="stat-label">🚨 NEW（回归）</div>
+  </div>
+  <div class="stat verdict-FIXED">
+    <div class="stat-num">{{ diff.fixed_count }}</div>
+    <div class="stat-label">✅ FIXED（修复）</div>
+  </div>
+  <div class="stat verdict-STABLE_FAIL">
+    <div class="stat-num">{{ diff.stable_fail_count }}</div>
+    <div class="stat-label">🟠 已知失败</div>
+  </div>
+  <div class="stat" style="background:#e0f5e9;color:var(--green)">
+    <div class="stat-num">{{ diff.stable_pass_count }}</div>
+    <div class="stat-label">🟢 稳定通过</div>
+  </div>
+  <div class="stat verdict-MISSING_BASELINE">
+    <div class="stat-num">{{ diff.missing_count }}</div>
+    <div class="stat-label">⚠ 仅一边出现</div>
+  </div>
+</div>
+
+{% if diff.has_regression %}
+<h2 style="color: var(--red)">🚨 回归用例（NEW）</h2>
+<table>
+  <thead>
+    <tr><th>Case ID</th><th>名称</th><th>失败的不变式</th><th>耗时变化</th></tr>
+  </thead>
+  <tbody>
+    {% for e in diff.entries if e.verdict == "NEW" %}
+    <tr>
+      <td><code>{{ e.case_id }}</code></td>
+      <td>{{ e.case_name }}</td>
+      <td class="invariant-list">{{ ", ".join(e.candidate_failing_invariants) or "(execution error)" }}</td>
+      <td>
+        {% if e.baseline_wall_ms and e.candidate_wall_ms %}
+          {{ "%.1f" | format(e.baseline_wall_ms) }}ms → {{ "%.1f" | format(e.candidate_wall_ms) }}ms
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if triage and triage.bugs %}
+<h2>🐛 自动 Triage 产出的 Bug 单</h2>
+<p class="meta">TriageAgent 把上述 {{ triage.total_failures }} 条 NEW failure 聚类成 {{ triage.total_bugs }} 条 Jira-compatible bug 单。</p>
+
+{% for b in triage.bugs %}
+<details {% if loop.first %}open{% endif %}>
+  <summary>
+    <span class="badge severity-{{ b.severity }}">{{ b.severity }}</span>
+    <code>{{ b.bug_id }}</code>
+    <strong>{{ b.title }}</strong>
+    <span style="margin-left:auto;color:var(--gray);font-size:11px">影响 {{ b.cluster_size }} 条用例</span>
+  </summary>
+  <p>
+    <strong>组件</strong>：<code>{{ b.component }}</code><br>
+    {% if b.invariant_violated %}<strong>违反不变式</strong>：<code>{{ b.invariant_violated }}</code><br>{% endif %}
+    {% if b.suggested_owner %}<strong>建议归属</strong>：<code>{{ b.suggested_owner }}</code><br>{% endif %}
+    <strong>引入版本</strong>：<code>{{ b.version_introduced }}</code>
+  </p>
+  <p><strong>期望</strong>：{{ b.expected }}<br>
+     <strong>实际</strong>：{{ b.actual }}</p>
+  <p><strong>复现步骤</strong>：</p>
+  <div class="repro">{% for step in b.repro_steps %}{{ loop.index }}. {{ step }}
+{% endfor %}</div>
+  {% if b.evidence_trace %}<p><strong>Trace</strong>：<code>{{ b.evidence_trace }}</code></p>{% endif %}
+  {% if b.cluster_rationale %}<p style="color:var(--gray);font-size:12px"><em>聚类理由：{{ b.cluster_rationale }}</em></p>{% endif %}
+</details>
+{% endfor %}
+{% endif %}
+
+{% if diff.fixed_count > 0 %}
+<h2 style="color: var(--green)">✅ 修复的用例（FIXED）</h2>
+<table>
+  <thead><tr><th>Case ID</th><th>名称</th><th>原失败不变式</th></tr></thead>
+  <tbody>
+    {% for e in diff.entries if e.verdict == "FIXED" %}
+    <tr>
+      <td><code>{{ e.case_id }}</code></td>
+      <td>{{ e.case_name }}</td>
+      <td class="invariant-list">{{ ", ".join(e.baseline_failing_invariants) or "(was execution error)" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if diff.stable_fail_count > 0 %}
+<h2 style="color: var(--orange)">🟠 已知失败（STABLE_FAIL）</h2>
+<p class="meta">两边都失败 —— 可能是已知技术债，也可能是测试用例本身有问题。</p>
+<table>
+  <thead><tr><th>Case ID</th><th>失败的不变式</th></tr></thead>
+  <tbody>
+    {% for e in diff.entries if e.verdict == "STABLE_FAIL" %}
+    <tr>
+      <td><code>{{ e.case_id }}</code></td>
+      <td class="invariant-list">{{ ", ".join(e.candidate_failing_invariants) or "(execution error)" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  GameGuard · LLM Agent-driven QA · 报告由 Jinja2 模板渲染（无 Java/Allure 依赖）
+</div>
+
+</body>
+</html>

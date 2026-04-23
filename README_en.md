@@ -267,14 +267,6 @@ If you want to demo the project live, the fastest path is:
 
 The full live-demo script is in [DEMO.md](DEMO.md).
 
-## Public Release Notes
-
-This repository is a public showcase version of the project. For a cleaner
-portfolio-oriented release workflow, start with:
-
-- [docs/public_release_checklist.md](docs/public_release_checklist.md)
-- [docs/public_repo_manifest.md](docs/public_repo_manifest.md)
-
 ## Limitations
 
 - This is a portfolio-grade prototype, not a production game-testing platform.

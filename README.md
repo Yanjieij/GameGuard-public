@@ -260,14 +260,6 @@ artifacts/     运行产物，默认忽略，仅保留占位
 
 更完整的演示脚本见 [DEMO.md](DEMO.md)。
 
-## Public Release Notes
-
-这个公开仓是面向作品展示的版本。如果你想继续整理或做更干净的 portfolio release，
-可以先看：
-
-- [docs/public_release_checklist.md](docs/public_release_checklist.md)
-- [docs/public_repo_manifest.md](docs/public_repo_manifest.md)
-
 ## 限制
 
 - 这是一个适合作品展示的原型，不是生产级游戏测试平台

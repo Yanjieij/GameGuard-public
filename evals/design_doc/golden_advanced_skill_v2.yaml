@@ -1,0 +1,99 @@
+# Golden set for evals/design_doc/fixtures/advanced_skill_v2.md.
+#
+# 这个 fixture 比 example_skill_v1 更难：3 个角色、4 个技能、4 个 buff，
+# 并混合 refresh/add/DoT/replay。required 保持在一个适合快速回归的规模，
+# optional 用来容纳模型合理展开但不是本轮硬性目标的条目。
+
+required:
+  - kind: hp_nonneg
+    actor: p1
+  - kind: hp_nonneg
+    actor: ally
+  - kind: hp_nonneg
+    actor: dummy
+
+  - kind: mp_nonneg
+    actor: p1
+  - kind: mp_nonneg
+    actor: ally
+
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_fireball
+    expected_cooldown: 8.0
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_poison
+    expected_cooldown: 10.0
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_barrier
+    expected_cooldown: 14.0
+  - kind: cooldown_at_least_after_cast
+    actor: p1
+    skill: skill_focus
+    expected_cooldown: 20.0
+
+  - kind: buff_refresh_magnitude_stable
+    actor: dummy
+    buff: buff_poison
+    expected_magnitude: 8.0
+  - kind: buff_refresh_magnitude_stable
+    actor: p1
+    buff: buff_barrier
+    expected_magnitude: 50.0
+  - kind: buff_refresh_magnitude_stable
+    actor: p1
+    buff: buff_arcane_power
+    expected_magnitude: 0.25
+
+  - kind: buff_stacks_within_limit
+    actor: dummy
+    buff: buff_poison
+    max_stacks: 1
+  - kind: buff_stacks_within_limit
+    actor: p1
+    buff: buff_barrier
+    max_stacks: 1
+  - kind: buff_stacks_within_limit
+    actor: p1
+    buff: buff_arcane_power
+    max_stacks: 1
+  - kind: buff_stacks_within_limit
+    actor: dummy
+    buff: buff_bleed
+    max_stacks: 3
+
+  - kind: interrupt_clears_casting
+    actor: p1
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_fireball
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_poison
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_focus
+
+  - kind: dot_total_damage_within_tolerance
+    actor: dummy
+    buff: buff_poison
+    expected_total: 40.0
+
+  - kind: replay_deterministic
+
+total_required: 22
+
+optional:
+  - kind: mp_nonneg
+    actor: dummy
+  - kind: interrupt_refunds_mp
+    actor: p1
+    skill: skill_barrier
+    note: "barrier 是瞬发，文档说明不进入可打断窗口；抽到不算错但不要求。"
+  - kind: dot_total_damage_within_tolerance
+    actor: dummy
+    buff: buff_bleed
+    expected_total: 24.0
+    note: "文档显式说本轮不要求 bleed 总伤，因此 optional。"

@@ -370,7 +370,21 @@ if os.environ.get("GAMEGUARD_DEBUG_LLM") == "1":
 # 把非 LiteLLM 原生 provider 映射到 OpenAI-compatible endpoint。
 # 当前空 —— zai/ 已经被 LiteLLM 原生识别。保留这个机制只是为了将来
 # 接入别的国产模型时不用再改结构。
-_PROVIDER_MAP: dict[str, dict[str, str]] = {}
+_PROVIDER_MAP: dict[str, dict[str, str]] = {
+    # DeepSeek V4 (2026-04-24 发布) 当前处于 API 过渡期：
+    #   - `deepseek-v4-pro` / `deepseek-v4-flash` 默认路由到旧的
+    #     `deepseek-reasoner` 端点，而 reasoner 不支持 tool_choice
+    #     → 必须通过 extra_body 发 `thinking: {"type": "disabled"}`
+    #       强制使用 non-thinking 变体（即 disable_thinking=True）。
+    #   - 原生参数 `thinking_mode` + `reasoning_effort` 已就绪，
+    #     等 DeepSeek 7 月停用旧端点后可切换。详见 compare_models.py。
+    #   - 走 OpenAI-compatible endpoint 是为了绕过 LiteLLM 对
+    #     deepseek/ provider 的模型名识别滞后。
+    "deepseek-v4": {
+        "api_base": "https://api.deepseek.com",
+        "api_key_env": "DEEPSEEK_API_KEY",
+    },
+}
 
 def _resolve_provider(model: str) -> tuple[str, dict[str, Any]]:
     """根据 ``provider/model`` 语法决定传给 LiteLLM 的参数。

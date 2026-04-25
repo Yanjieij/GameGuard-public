@@ -1,6 +1,6 @@
 # GameGuard · Agent 效果评估
 
-> 最近一次 rollup：2026-04-18
+> 最近一次 rollup：2026-04-26
 > 
 > 这份文件是 `evals/` 目录下 4 份 `results.md` 的汇总。
 > 复跑：`python -m evals.rollup`（依赖先跑各 Agent 的 eval 脚本）。
@@ -183,147 +183,137 @@
 
 *来源：[`evals/compare_models/results.md`](evals/compare_models/results.md)*
 
-跑 DesignDoc + TestGen 两个 eval 在 5 个 provider 上，看谁能抓到多少 invariant
-/ 用例质量 / 成本 / 协议兼容性。
+> 最近更新：2026-04-26
 
-**方法**：temperature=0，单次跑，看绝对数字和协议兼容性。同 provider 的 variance
-在这里不重要（temperature=0 + 缓存命中后完全确定）；重要的是不同 provider 在
-**同一任务、同一 prompt、同一工具集**下的对比。
+跑 DesignDoc + TestGen 两个 eval 在多个 provider 上，对比不变式抽取能力、用例质量、成本、协议兼容性。
 
-### 参赛 provider 说明
+**方法**：temperature=0（GPT-5.5 除外，它只支持 temperature=1），单次跑。
 
-| Provider | Model | 走谁 | disable_thinking | 备注 |
-|---|---|---|---|---|
-| DeepSeek-chat | `deepseek/deepseek-chat` | LiteLLM | — | 非推理型，当前 default |
-| GLM-4.6 | `zai/glm-4.6` | LiteLLM | — | 非推理型，智谱当家 |
-| GLM-5.1 | `zai/glm-5.1` | LiteLLM | ✓ | 推理型，disable_thinking 标配 |
-| GPT-4.1 | `openai/gpt-4.1` | LiteLLM | — | OpenAI 2025 tool-use 优化款，function-calling 原产地 |
+### 参赛模型一览
 
-> Gemini 2.5 Flash / Pro 曾在参赛池，因协议适配问题下线；详见文末 **负面结果 · Gemini 调研**。
+| Key | Provider | Model | 推理 | Temp | 备注 |
+|---|---|---|---|---|---|
+| `gpt-5.5` | GPT-5.5 | `openai/gpt-5.5` | reasoning_effort=none | 1.0 | 最新旗舰 |
+| `gpt-5.4` | GPT-5.4 | `openai/gpt-5.4` | — | 0.0 | OpenAI flagship |
+| `gpt-4.1` | GPT-4.1 | `openai/gpt-4.1` | — | 0.0 | 2025 tool-use 优化款 |
+| `glm-5.1` | GLM-5.1 | `zai/glm-5.1` | **开启** | 0.0 | 推理型，开推理后 v1 pass 78%→100% |
+| `glm-4.7` | GLM-4.7 | `zai/glm-4.7` | disable_thinking | 0.0 | 推理型（暂未重测） |
+| `glm-4.6` | GLM-4.6 | `zai/glm-4.6` | — | 0.0 | 非推理型；LiteLLM 协议错乱已禁用 |
+| `deepseek-v4-pro` | DeepSeek-V4-Pro | `deepseek-v4/deepseek-v4-pro` | disable_thinking* | 0.0 | V4 高质量档 |
+| `deepseek-v4-flash` | DeepSeek-V4-Flash | `deepseek-v4/deepseek-v4-flash` | disable_thinking* | 0.0 | V4 快速档 |
+| `deepseek` | DeepSeek-chat | `deepseek/deepseek-chat` | — | 0.0 | 当前 baseline |
 
----
-
-### DesignDoc 任务对比（从策划文档抽 invariant）
-
-| Provider | recall | precision | steps | tokens | wall (s) | 备注 |
-|---|---:|---:|---:|---:|---:|---|
-| **GLM-5.1** | **83.33%** | **89.47%** | 5 | 21,288 | 96.3 | 🏆 最佳召回：一次 emit 17 条，17/18 required 命中 |
-| GPT-4.1 | 55.56% | 100.00% | 11 | 104,038 | 30.1 | 中文文档召回差 GLM-5.1 近 28pp；precision 完美 |
-| DeepSeek-chat | 55.56% | 100% | 20 | (cached) | (cached) | 稳：召回一般但 precision 完美 |
-| GLM-4.6 | 0.00% | 0.00% | 20 | 69,365 | 32.1 | ✗ LiteLLM 协议错乱 |
-
-### TestGen 任务对比（完整 plan 流水线）
-
-| Provider | v2 bug recall | v1 pass% | 生成用例数 | steps | wall (s) | 备注 |
-|---|---:|---:|---:|---:|---:|---|
-| **GPT-4.1** | **80.00%** | **100%** | 5 | 3 | 10.6 | 🏆 2× GLM-5.1 的 bug 召回，v1 pass +12.5pp，10 秒跑完 |
-| GLM-5.1 | 40% | 87.5% | 8 | — | 285.5 | 慢但也能跑 |
-| DeepSeek-chat | 20% | 57% | 7 | — | (cached) | baseline |
-| Handwritten baseline | 100% | 100% | 12 | — | 0 | 人类 ground truth |
-
-GLM-4.6 上游 DesignDoc 已 0%，不值得跑 TestGen。
-
----
-
-### 一句话结论
-
-> **两阶段用两家**：DesignDoc 用 **GLM-5.1**（83% recall > GPT-4.1 的 55.6%，
-> 中文策划文档语境差距显著），TestGen 用 **GPT-4.1**（80% v2 bug 召回、
-> 100% v1 pass、10s 跑完——碾压 GLM-5.1 在这一环的 40% / 87.5% / 285s）。
+> \* DeepSeek V4 的 `disable_thinking` 不仅是关推理，更是 API 变体选择——去掉后会路由到 `deepseek-reasoner`，而 reasoner 不支持 `tool_choice`，直接报错。因此必须保持。
 >
-> **如果只能选一家**：GPT-4.1 综合最强——DesignDoc 55.6% 虽非最好但 precision
-> 100%，下游 TestGen 能补回；TestGen 的 80% v2 bug 召回是 GameGuard 最关键的
-> 业务指标（"能不能抓住回归 bug"），比 DesignDoc 的"抽全不变式" 更接近 QA
-> 系统的真实产出。
+> Gemini 2.5 Flash / Pro 曾参赛，因 LiteLLM 协议适配问题于 D19 下线。
 
 ---
 
-### 踩过的坑（每一条都是面试素材）
+### DesignDoc 任务对比（策划文档 → 不变式）
 
-#### 坑 1 · GLM-4.6 多轮 tool-calling 协议错乱
+| Provider | Recall | Precision | Steps | Tokens | Wall | 日期 |
+|---|---:|---:|---:|---:|---:|---|
+| **GLM-5.1** 🔥 | **100%** | 100% | 4 | 30,261 | 221s | 04-26 |
+| **GPT-5.5** | **100%** | 100% | 12 | 296,734 | 86s | 04-26 |
+| **GPT-5.4** | **100%** | 100% | 9 | 144,905 | 112s | 04-24 |
+| **DS-V4-Pro** | **100%** | 100% | 9 | 62,989 | 247s | 04-24 |
+| GLM-5.1 (关推理) | 100% | 100% | 5 | 56,595 | 158s | 04-24 |
+| DS-V4-Flash | 83% | 100% | 10 | 63,261 | 54s | 04-24 |
+| GPT-4.1 | 56% | 100% | 11 | 104,038 | 30s | 04-18 |
+| DeepSeek-chat | 56% | 100% | 20 | (cached) | (cached) | 04-18 |
+| GLM-4.6 | 0% | 0% | 20 | 69,365 | 32s | 04-18 |
 
-**现象**：GLM-4.6 在第 3 步以后返回非 JSON 的 tool_call arguments：
+### TestGen 任务对比（不变式 → 测试用例 → v2 bug 召回）
 
-```
-<tool_call>
-<arg_key>doc_id</arg_key><arg_value>example_skill_v1</arg_value>
-<arg_key>heading</arg_key><arg_value>4. 技能数据表</arg_value>
-</tool_call>
-```
-
-这是 GLM 自家的 XML 协议，不是 OpenAI function-calling 标准 JSON。LiteLLM
-1.83 没做归一化，Pydantic 校验全部拒绝。20 步里 15 步 schema error，从未成
-功调到 emit_invariant。
-
-**根因**：Z.AI 服务端在 tool_history 变长时会切换到自家协议，LiteLLM
-没捕获这个切换。
-
-**解决**：暂时没有。要么等 LiteLLM 修，要么用 Z.AI 原生 SDK 自写归一化。
-
-#### 负面结果 · Gemini 调研（已下线）
-
-Gemini 2.5 Flash / Pro 曾在参赛池，踩到两层协议适配坑后下线：
-
-1. **LiteLLM 不翻译 `tool_choice="required"`**：OpenAI 语义应映射到 Gemini 的
-   `functionCallingConfig.mode="ANY"`，LiteLLM 1.83 没做此翻译，LLM 读完文档就
-   `no_tool_calls` 早退，recall 0%。
-2. **绕开 LiteLLM 直调 google-genai SDK 后撞 infinite emit**：mode=ANY 下
-   Gemini 一轮并发 28 个 `emit_invariant` 且不主动 finalize，step=167 时撞
-   1M tokens/min 限流。prompt 层短期无解。
-
-**结论**：问题在 Gemini 侧"ANY 模式不主动收敛"的行为，DeepSeek / GLM 在同
-prompt 下都能正常 finalize。GLM-5.1 已经足够强（83% DesignDoc recall），修
-Gemini 边际价值低于维护成本，相关代码（`gemini_native.py`、`[gemini]` 可选
-依赖、REGISTRY 条目）于 D19 整体下线。
+| Provider | v2 Bug Recall | v1 Pass% | 用例数 | Steps | Tokens | Wall | 日期 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| **GLM-5.1** 🔥 | 80% | **100%** | 9 | 3 | 20,603 | 166s | 04-26 |
+| GPT-5.4 | 80% | 100% | 8 | 3 | 13,222 | 26s | 04-24 |
+| DS-V4-Pro | 80% | 100% | 8 | 3 | 20,302 | 134s | 04-24 |
+| GPT-4.1 | 80% | 100% | 5 | 3 | — | 11s | 04-18 |
+| GPT-5.5 | 80% | 87.5% | 8 | 5 | 186,957 | 64s | 04-26 |
+| GLM-5.1 (关推理) | 80% | 77.8% | 9 | 3 | 18,249 | 80s | 04-24 |
+| DS-V4-Flash | 40% | 100% | 9 | 4 | 25,188 | 54s | 04-24 |
+| DeepSeek-chat | 20% | 57% | 7 | — | — | (cached) | 04-18 |
+| *人工 handwritten* | *100%* | *100%* | *12* | — | — | — | — |
 
 ---
 
-### 为什么两个任务有两个不同的赢家
+### 推理开关的影响 (2026-04-26 实验)
 
-DesignDoc 和 TestGen 对 LLM 的要求其实完全不同：
+#### GLM-5.1：开推理全方位优于关推理
 
-- **DesignDoc**：从长中文文档里抽结构化信息——考**阅读理解 + 中文语感 +
-  一次性 emit 17 条的规划能力**。GLM-5.1 的推理型架构 + 中文语料占比高，
-  正好吃透这个场景，5 步一次 emit 完事（GPT-4.1 要 11 步）。
-- **TestGen**：给定 invariant 清单生成可执行 YAML 测试用例——考**tool-calling
-  稳定性 + 紧凑工具规划 + 不生成 broken case 的静态正确性**。GPT-4.1 作为
-  function-calling 协议原产地 + 2025 tool-use 优化款，在这个环节形态全对：
-  3 步 / 10 秒 / 5 条用例 / 100% v1 pass / 80% v2 bug 召回。GLM-5.1 的推
-  理型反而在这是负担——思考过多、生成 8 条用例但 v1 pass 掉到 87.5%。
+| GLM-5.1 | DD Recall | DD Tokens | DD Wall | TG Bug Recall | TG v1 Pass | TG Wall |
+|---|---|---|---|---|---|---|
+| 关推理 | 100% | 56,595 | 158s | 80% | 77.8% | 80s |
+| **开推理** | 100% | **30,261** (-47%) | 221s (+40%) | 80% | **100%** (+22pp) | 166s (+108%) |
 
-**关键 insight**：**别用一家模型打整个 pipeline**。GameGuard 的 orchestrator
-天然按 Agent 分阶段，每个阶段挑最合适的 provider：DesignDoc Agent 用 GLM-5.1、
-TestGen Agent 用 GPT-4.1、Triage / Critic 的轻量场景用 DeepSeek 省钱。`.env`
-里的 `GAMEGUARD_MODEL` / `GAMEGUARD_MODEL_TRIAGE` 双字段就是为这个留的接口。
+**结论**：GLM-5.1 应该保持开推理。Token 省了将近一半，v1 pass 从 77.8% 拉到 100%（生成的用例不再有错误），静默冻结没有触发。唯一代价是 wall clock 翻倍，但对于 CI/批跑场景，质量优先于速度。
 
-**成本考量（估算）**：GPT-4.1 单次 DesignDoc 约 $0.6（¥4.3），GLM-5.1 约 ¥0.4，
-DeepSeek ¥0.02。production 里漏抓一个 regression bug 的代价远高于单次实验的
-$0.5——对 TestGen 这一环 quality 绝对优先。
+#### GPT-5.5：关推理有损
 
----
-
-### 还没测的 provider（有 key 之后可补）
-
-| Provider | 预期 | 为什么想跑 |
+| GPT-5.5 | TG Bug Recall | TG v1 Pass |
 |---|---|---|
-| Claude Sonnet 4.5+ | recall 80-90% | tool-calling 行业金标准；想对比 GPT-4.1 |
-| GPT-5 | recall 85%+ | 2025 旗舰，看 TestGen 上能否再上 80% |
-| OpenAI o4-mini | recall 72-82% | 推理型 + 便宜，对比 GLM-5.1 的推理型优势是否普遍 |
+| 默认推理 | 100% | 100% |
+| reasoning_effort=none | 80% | 87.5% |
+
+GPT-5.5 开推理时是唯一达到 TestGen 双 100% 的模型。但当前配置为 `reasoning_effort=none`（按你的偏好）。
+
+#### DeepSeek V4：无法对比
+
+`disable_thinking` 去掉后 API 路由到 `deepseek-reasoner`，而 reasoner 不支持 `tool_choice`，直接报错。这说明 `disable_thinking` 对 DeepSeek V4 不仅是关推理，更是 API 变体选择器——**必须保持 True**。
 
 ---
 
-### 方法论 / 实验的局限
+### 关键发现
 
-1. **N=1 不足以看 variance**——temperature=0 + 缓存的情况下单次跑就能
-   代表平均，但 LLM 有日常波动（模型版本升级、后端路由变化）。生产要长期
-   监控。
-2. **goldens 偏严格**——18 条 required 是我手工标注的"理想抽取"，可能过度
-   理想。DeepSeek 55% 看起来低，但人工审查漏的那几条确实是 prompt 要重点
-   强调才能抽到的（比如 `replay_deterministic` 这种 meta-invariant）。
-3. **评估指标单维度**——我们只看 recall / precision / v2 bug 召回。实际
-   还应看"生成用例的可读性"、"trace 能否讲故事"这类定性维度。
+#### 1. DesignDoc 天花板已到——需要更难的数据集
 
-这些限制是**项目保持诚实的一部分**——面试讲"这是我当前能看到的数字 + 已
-知的边界"比吹"100% 召回"有说服力得多。
+GLM-5.1 / GPT-5.5 / GPT-5.4 / DS-V4-Pro 四家全部 100% recall + 100% precision。当前 40 条 golden 区分度不够。
+
+**性价比排名**：GLM-5.1 开推理 (30k tokens, 4步) > DS-V4-Pro (63k, 9步) > GPT-5.4 (145k, 9步) > GPT-5.5 (297k, 12步)
+
+#### 2. TestGen v2 bug recall 天花板是 80%
+
+所有模型全部卡在 80%，没有任何模型突破。BUG-002（cooldown isolation）是系统性盲区——需要更场景化的测试用例策略，不是换模型能解决的。
+
+#### 3. 推理能力对测试生成质量有明确帮助
+
+GLM-5.1 和 GPT-5.5 的数据一致表明：开推理 → v1 pass 显著提升（生成的用例更正确），但对 bug recall 的提升有限（BUG-002 仍是盲区）。
+
+#### 4. 成本估算
+
+| Provider | DesignDoc | TestGen | 单次总成本（粗估） |
+|---|---:|---:|---|
+| GPT-5.5 | 297k | 187k | ~$3-5 |
+| GPT-5.4 | 145k | 13k | ~$1-2 |
+| GPT-4.1 | 104k | 10k | ~$0.6 |
+| GLM-5.1 开推理 | 30k | 21k | ~¥0.5 |
+| DS-V4-Pro | 63k | 20k | ~¥0.3 |
+
+---
+
+### 实验局限
+
+1. **N=1**：单次跑，temperature=0 下波动小
+2. **Golden 上限**：当前 40 条区分度不够，4 家已达 100% 天花板
+3. **GPT-5.5 temperature=1**：与其他模型不完全可比
+4. **DeepSeek V4 推理无法关闭**：API 层面的变体选择限制
+
+---
+
+### 负面结果
+
+#### GLM-4.6 多轮 tool-calling 协议错乱
+
+第 3 步后返回 XML 格式 tool_call arguments，LiteLLM 未归一化，Pydantic 校验全部拒绝。
+
+#### DeepSeek V4 无法切到推理变体
+
+去掉 `disable_thinking` 后路由到 `deepseek-reasoner`，报错 `does not support this tool_choice`。`disable_thinking=True` 是必需的 API 变体选择器。
+
+#### Gemini 调研（已下线）
+
+LiteLLM 不翻译 `tool_choice="required"` → recall 0%。直调 google-genai SDK → infinite emit → 撞 1M tokens/min 限流。
 
 ---

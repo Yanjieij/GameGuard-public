@@ -50,7 +50,9 @@ class EmitInvariantInput(BaseModel):
             "buff_stacks_within_limit(actor, buff, max_stacks), "
             "buff_refresh_magnitude_stable(actor, buff, expected_magnitude [, tolerance]), "
             "interrupt_clears_casting(actor), "
-            "interrupt_refunds_mp(actor, skill)."
+            "interrupt_refunds_mp(actor, skill), "
+            "dot_total_damage_within_tolerance(actor, buff, expected_total [, tolerance]), "
+            "replay_deterministic()."
         ),
     )
     rationale: str = Field(
@@ -171,10 +173,13 @@ SYSTEM_PROMPT = """你是 GameGuard 的 DesignDocAgent —— 一个资深游戏
 ## 工作流程
 
 1. 调用 `list_docs` 查看可读文档；再用 `list_doc_sections` 看目录。
+   如果用户消息已经提供了完整文档正文，可以跳过读取工具，直接 emit。
 2. 优先阅读包含这些关键词的章节：数据表、公式、状态机、冷却、buff、
    stack、打断、MP、不变式、Given-When-Then。
-3. 对每一条你能从文档里抽出来的性质，调用 `emit_invariant` 提交。
-4. 确认自己已经覆盖了文档中明确编号的不变式（通常以 `I-01` / `I-02` … 标注），
+3. 一旦已经读过角色/技能/buff 数据表、状态机/冷却规则和不变式章节，
+   下一轮必须开始调用 `emit_invariant`。不要反复重读已读章节。
+4. 对每一条你能从文档里抽出来的性质，调用 `emit_invariant` 提交。
+5. 确认自己已经覆盖了文档中明确编号的不变式（通常以 `I-01` / `I-02` … 标注），
    然后调用 `finalize`。不 finalize 会被视为没完成工作。
 
 ## 关键：具体的 actor 与 skill 名称
@@ -188,6 +193,14 @@ SYSTEM_PROMPT = """你是 GameGuard 的 DesignDocAgent —— 一个资深游戏
 
 技能 ID 同理：使用文档数据表里的完整 ID（`skill_fireball` / `skill_frostbolt`
 / `skill_ignite` / `skill_focus`），不要缩写。
+
+常见展开规则：
+  - `cooldown_at_least_after_cast`：对技能表中的每个 skill emit 一条，
+    actor 使用施法者（通常是 `p1`）。
+  - Target Buff / Debuff 的 actor 是受影响目标（通常是 `dummy`），不是 caster。
+  - Self Buff 的 actor 是施法者（通常是 `p1`）。
+  - `buff_refresh_magnitude_stable` 和 `buff_stacks_within_limit` 都要按 buff 表逐个展开。
+  - `interrupt_refunds_mp` 只对 `cast_time > 0` 的技能逐个展开。
 
 ## 抽取原则
 
@@ -203,14 +216,18 @@ SYSTEM_PROMPT = """你是 GameGuard 的 DesignDocAgent —— 一个资深游戏
 
 - 不要重复 emit 同一个 id 的不变式。
 - 不要把 v1/v2 差异当作不变式；不变式应在任何正确实现下都成立。
-- 打断退款（`interrupt_refunds_mp`）最有价值的验证对象是施法时间长的技能
-  （如 `skill_focus`），短施法技能难以被打断。
+- 打断退款（`interrupt_refunds_mp`）应覆盖所有 `cast_time > 0` 的技能；
+  `cast_time = 0` 的瞬发技能通常不可打断，除非文档明确说明。
+- DoT 总伤用 `dot_total_damage_within_tolerance(actor, buff, expected_total, tolerance)`。
+- 重放确定性用 `replay_deterministic`，它是全局不变式，不需要 actor / skill / buff。
 
 ## 效率建议
 
 - 你最多只能调用 20 步 tool。读文档 4 步足够，剩下用来 emit + finalize。
 - 在一个 assistant 轮次里可以并行发起多个 `emit_invariant` 调用（LLM 协议
   支持 parallel tool_calls），这样能显著节省步数。
+- 如果你已经读过不变式章节和相关数据表，优先 emit；不要为了"更完整"继续
+  调 read_doc_section 复读同一内容。
 
 现在开始吧。用户会告诉你该处理哪份文档。
 """
@@ -234,6 +251,7 @@ def run_design_doc_agent(
     doc_paths: list[str | Path],
     llm: LLMClient,
     max_steps: int = 20,
+    inline_small_docs: bool = True,
 ) -> DesignDocResult:
     """读一份或多份策划文档 → 产出 InvariantBundle。
 
@@ -245,9 +263,16 @@ def run_design_doc_agent(
     doc_names: list[str] = []
     for p in doc_paths:
         doc_names.append(repo.register_file(p))
+    inline_doc_names = {
+        name
+        for name in doc_names
+        if inline_small_docs and repo.get(name).count("\n") + 1 <= 220
+    }
+    all_docs_inlined = bool(doc_names) and len(inline_doc_names) == len(doc_names)
 
     tools = ToolRegistry()
-    tools.register_many(build_doc_tools(repo))
+    if not all_docs_inlined:
+        tools.register_many(build_doc_tools(repo))
 
     # 2) 结果收集器 + emit tools
     collector = _Collector()
@@ -266,10 +291,29 @@ def run_design_doc_agent(
         tool_choice="required",
         stop_when=lambda r: r.ok and r.tool_name == "finalize",
     )
-    loop.add_user_message(
+    user_message = (
         f"请处理以下文档并抽取不变式：{doc_names}\n"
         f"目标产出 ≥ 6 条（策划文档 v1 至少有 8 条显式标注的 I-xx）。"
     )
+    if inline_small_docs:
+        inline_blocks: list[str] = []
+        for name in doc_names:
+            text = repo.get(name)
+            if name in inline_doc_names:
+                inline_blocks.append(f"## 文档 {name}\n\n```markdown\n{text}\n```")
+        if inline_blocks:
+            user_message += (
+                "\n\n以下短文档已完整提供。你可以直接调用 emit_invariant，"
+                "不要为了确认而重复读取这些文档：\n\n"
+                + "\n\n".join(inline_blocks)
+            )
+            if all_docs_inlined:
+                user_message += (
+                    "\n\n本次运行未提供文档读取工具；你只能使用 "
+                    "`emit_invariant` 保存不变式，最后使用 `finalize`。"
+                )
+
+    loop.add_user_message(user_message)
 
     stats = loop.run()
 

@@ -105,8 +105,8 @@ required:
   # --- I-10 确定性 ---
   - kind: replay_deterministic
 
-# 上面共 17 条"必须抽到"。Agent 抽 >=17 算完整召回，<17 算 missed。
-total_required: 17
+# 上面共 18 条"必须抽到"。Agent 抽 >=18 算完整召回，<18 算 missed。
+total_required: 18
 
 # 可选项（抽到算 bonus，不抽也不扣分）：
 optional:

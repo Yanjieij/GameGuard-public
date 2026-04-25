@@ -29,6 +29,30 @@ from gameguard.agents.design_doc import DesignDocResult, run_design_doc_agent
 from gameguard.domain.invariant import InvariantBundle
 
 
+@dataclass(frozen=True)
+class DesignDocCase:
+    """一份 DesignDoc eval fixture。"""
+
+    name: str
+    doc_path: Path
+    golden_path: Path
+
+
+EVAL_CASES: dict[str, DesignDocCase] = {
+    "skill_v1": DesignDocCase(
+        name="skill_v1",
+        doc_path=Path("docs/example_skill_v1.md"),
+        golden_path=Path("evals/design_doc/golden_invariants.yaml"),
+    ),
+    "advanced_skill_v2": DesignDocCase(
+        name="advanced_skill_v2",
+        doc_path=Path("evals/design_doc/fixtures/advanced_skill_v2.md"),
+        golden_path=Path("evals/design_doc/golden_advanced_skill_v2.yaml"),
+    ),
+}
+DEFAULT_CASE_NAMES = ("skill_v1", "advanced_skill_v2")
+
+
 # --- 匹配逻辑 -----------------------------------------------------------------
 
 @dataclass
@@ -86,6 +110,11 @@ def load_golden(path: Path) -> tuple[set[InvariantKey], set[InvariantKey]]:
     data = yaml.safe_load(path.read_text())
     required = {key_from_dict(d) for d in data.get("required", [])}
     optional = {key_from_dict(d) for d in data.get("optional", [])}
+    declared_total = data.get("total_required")
+    if declared_total is not None and int(declared_total) != len(required):
+        raise ValueError(
+            f"{path} total_required={declared_total}，但 required 实际为 {len(required)}"
+        )
     return required, optional
 
 
@@ -122,6 +151,8 @@ def score_bundle(
         "precision": precision,
         "hit_required_count": len(hit_required),
         "hit_optional_count": len(hit_optional),
+        "required_count": len(required),
+        "accepted_count": len(hit_required) + len(hit_optional),
         "missed": sorted(str(k) for k in missed),
         "novel": sorted(str(k) for k in novel),
         "total_extracted": len(agent_keys),
@@ -130,12 +161,12 @@ def score_bundle(
 
 # --- 主流程 -------------------------------------------------------------------
 
-def run_one(doc_path: Path, run_index: int) -> tuple[DesignDocResult, float]:
+def run_one(case: DesignDocCase, run_index: int) -> tuple[DesignDocResult, float]:
     """跑一次 DesignDocAgent，返回结果和 wall-clock 秒数。"""
-    session_id = f"eval-design-doc-run{run_index}"
+    session_id = f"eval-design-doc-{case.name}-run{run_index}"
     client = make_llm_client(session_id=session_id)
     t0 = time.perf_counter()
-    result = run_design_doc_agent(doc_paths=[doc_path], llm=client)
+    result = run_design_doc_agent(doc_paths=[case.doc_path], llm=client)
     wall = time.perf_counter() - t0
     return result, wall
 
@@ -144,68 +175,102 @@ def main() -> int:
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--doc", type=str, default="docs/example_skill_v1.md")
+    parser.add_argument(
+        "--cases",
+        type=str,
+        default=",".join(DEFAULT_CASE_NAMES),
+        help=f"逗号分隔的 fixture 名；可选：{', '.join(EVAL_CASES)}",
+    )
+    parser.add_argument("--doc", type=str, default=None,
+                        help="自定义单文档路径；提供后会忽略 --cases")
+    parser.add_argument("--golden", type=str, default=None,
+                        help="自定义 golden YAML；与 --doc 配套使用")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--out", type=str, default="evals/design_doc/results.md")
     args = parser.parse_args()
 
-    doc_path = Path(args.doc)
-    golden_path = Path("evals/design_doc/golden_invariants.yaml")
+    if args.doc:
+        golden = Path(args.golden) if args.golden else Path("evals/design_doc/golden_invariants.yaml")
+        cases = [DesignDocCase(name=Path(args.doc).stem, doc_path=Path(args.doc), golden_path=golden)]
+    else:
+        case_names = [c.strip() for c in args.cases.split(",") if c.strip()]
+        unknown = [c for c in case_names if c not in EVAL_CASES]
+        if unknown:
+            print(f"未知 case：{', '.join(unknown)}。可选：{', '.join(EVAL_CASES)}")
+            return 1
+        cases = [EVAL_CASES[c] for c in case_names]
 
-    if not doc_path.exists():
-        print(f"找不到策划文档：{doc_path}")
-        return 1
-    if not golden_path.exists():
-        print(f"找不到 golden：{golden_path}")
-        return 1
+    for case in cases:
+        if not case.doc_path.exists():
+            print(f"找不到策划文档：{case.doc_path}")
+            return 1
+        if not case.golden_path.exists():
+            print(f"找不到 golden：{case.golden_path}")
+            return 1
 
-    required, optional = load_golden(golden_path)
-    print(f"[eval] golden required={len(required)} optional={len(optional)}")
+    golden_by_case = {case.name: load_golden(case.golden_path) for case in cases}
+    for case in cases:
+        required, optional = golden_by_case[case.name]
+        print(
+            f"[eval] case={case.name} golden required={len(required)} "
+            f"optional={len(optional)} doc={case.doc_path}"
+        )
 
     # 粗略成本估算：单次 DesignDoc 约 30k token，在 DeepSeek 上 ~$0.05
-    est_usd = args.runs * 0.05
+    est_usd = args.runs * len(cases) * 0.05
     if args.dry_run:
-        print(f"[dry-run] {args.runs} 次跑估计花费 ~${est_usd:.2f}")
+        print(f"[dry-run] {args.runs} 次 × {len(cases)} cases 估计花费 ~${est_usd:.2f}")
         return 0
 
-    confirm_real_run(est_usd, f"跑 {args.runs} 次 DesignDocAgent")
+    confirm_real_run(est_usd, f"跑 {args.runs} 次 × {len(cases)} cases DesignDocAgent")
 
     runs: list[RunMetrics] = []
     details: list[dict[str, Any]] = []
+    case_runs: list[tuple[str, RunMetrics]] = []
 
     for i in range(1, args.runs + 1):
-        print(f"\n[eval] Run {i}/{args.runs}...")
-        try:
-            result, wall = run_one(doc_path, i)
-        except Exception as e:
-            print(f"  ✗ 失败: {e}")
-            continue
+        for case in cases:
+            print(f"\n[eval] Run {i}/{args.runs} case={case.name}...")
+            required, optional = golden_by_case[case.name]
+            try:
+                result, wall = run_one(case, i)
+            except Exception as e:
+                print(f"  ✗ 失败: {e}")
+                continue
 
-        scored = score_bundle(result.bundle, required, optional)
-        metrics = RunMetrics(
-            recall=scored["recall"],
-            precision=scored["precision"],
-            steps=result.stats.steps,
-            tokens=result.stats.extra.get("total_tokens", 0) if hasattr(result.stats, "extra") else 0,
-            usd=0.0,  # TODO: 从 trace 里提取
-            wall_seconds=wall,
-            extra={
-                "hit_required": scored["hit_required_count"],
-                "hit_optional": scored["hit_optional_count"],
-                "total_extracted": scored["total_extracted"],
-                "missed": scored["missed"],
-                "novel": scored["novel"],
-                "finalized_by_agent": result.finalized_by_agent,
-            },
-        )
-        runs.append(metrics)
-        details.append(scored)
-        print(
-            f"  recall={metrics.recall:.2%} precision={metrics.precision:.2%} "
-            f"抽到 {scored['total_extracted']} 条（required {scored['hit_required_count']}/"
-            f"{len(required)} + optional {scored['hit_optional_count']} + novel {len(scored['novel'])}）"
-            f" steps={metrics.steps} wall={metrics.wall_seconds:.1f}s"
-        )
+            scored = score_bundle(result.bundle, required, optional)
+            metrics = RunMetrics(
+                recall=scored["recall"],
+                precision=scored["precision"],
+                steps=result.stats.steps,
+                tokens=(
+                    result.stats.extra.get("total_tokens", 0)
+                    if hasattr(result.stats, "extra")
+                    else 0
+                ),
+                usd=0.0,  # TODO: 从 trace 里提取
+                wall_seconds=wall,
+                extra={
+                    "case": case.name,
+                    "hit_required": scored["hit_required_count"],
+                    "hit_optional": scored["hit_optional_count"],
+                    "required_count": scored["required_count"],
+                    "accepted_count": scored["accepted_count"],
+                    "total_extracted": scored["total_extracted"],
+                    "missed": scored["missed"],
+                    "novel": scored["novel"],
+                    "finalized_by_agent": result.finalized_by_agent,
+                },
+            )
+            runs.append(metrics)
+            details.append({"case": case.name, **scored})
+            case_runs.append((case.name, metrics))
+            print(
+                f"  recall={metrics.recall:.2%} precision={metrics.precision:.2%} "
+                f"抽到 {scored['total_extracted']} 条（required {scored['hit_required_count']}/"
+                f"{len(required)} + optional {scored['hit_optional_count']} + novel {len(scored['novel'])}）"
+                f" steps={metrics.steps} wall={metrics.wall_seconds:.1f}s"
+            )
 
     if not runs:
         print("所有 run 都失败了。")
@@ -215,7 +280,7 @@ def main() -> int:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    md = _render_results(runs, details, required, optional, doc_path)
+    md = _render_results(runs, details, cases, case_runs)
     out_path.write_text(md, encoding="utf-8")
     print(f"\n[eval] 结果已写入 {out_path}")
     return 0
@@ -224,29 +289,50 @@ def main() -> int:
 def _render_results(
     runs: list[RunMetrics],
     details: list[dict[str, Any]],
-    required: set[InvariantKey],
-    optional: set[InvariantKey],
-    doc_path: Path,
+    cases: list[DesignDocCase],
+    case_runs: list[tuple[str, RunMetrics]],
 ) -> str:
     """生成 results.md 内容。"""
+    total_required = sum(r.extra["required_count"] for r in runs)
+    total_hit = sum(r.extra["hit_required"] for r in runs)
+    total_extracted = sum(r.extra["total_extracted"] for r in runs)
+    total_accepted = sum(r.extra["accepted_count"] for r in runs)
+    micro_recall = total_hit / total_required if total_required else 0.0
+    micro_precision = total_accepted / total_extracted if total_extracted else 0.0
+
     lines = [
         "# DesignDocAgent 评估结果",
         "",
-        f"- 文档：`{doc_path}`",
-        f"- Golden required：{len(required)} 条；optional：{len(optional)} 条",
+        f"- Cases：{', '.join(c.name for c in cases)}",
         f"- Runs：{len(runs)}",
+        f"- Micro recall：{micro_recall:.2%}",
+        f"- Micro precision：{micro_precision:.2%}",
         "",
         render_metrics_table("各次运行", runs),
     ]
+
+    lines.append("## Case 明细")
+    lines.append("")
+    lines.append("| Case | recall | precision | required hit | extracted | steps | wall (s) |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    for case_name, r in case_runs:
+        lines.append(
+            f"| `{case_name}` | {r.recall:.2%} | {r.precision:.2%} | "
+            f"{r.extra['hit_required']}/{r.extra['required_count']} | "
+            f"{r.extra['total_extracted']} | {r.steps} | {r.wall_seconds:.1f} |"
+        )
+    lines.append("")
 
     # 漏抽统计：统计所有 run 里被漏的 invariant 及其出现次数
     missed_counter: dict[str, int] = {}
     novel_counter: dict[str, int] = {}
     for d in details:
         for k in d["missed"]:
-            missed_counter[k] = missed_counter.get(k, 0) + 1
+            label = f"{d['case']}::{k}"
+            missed_counter[label] = missed_counter.get(label, 0) + 1
         for k in d["novel"]:
-            novel_counter[k] = novel_counter.get(k, 0) + 1
+            label = f"{d['case']}::{k}"
+            novel_counter[label] = novel_counter.get(label, 0) + 1
 
     if missed_counter:
         lines.append("## 被漏抽的 required invariant")
@@ -267,13 +353,11 @@ def _render_results(
         lines.append("")
 
     # 最终建议
-    avg_recall = sum(r.recall for r in runs) / len(runs)
-    avg_prec = sum(r.precision for r in runs) / len(runs)
     lines.append("## 结论")
     lines.append("")
-    if avg_recall >= 0.9 and avg_prec >= 0.85:
+    if micro_recall >= 0.9 and micro_precision >= 0.85:
         verdict = "✓ 可用——召回和准确率都达标"
-    elif avg_recall >= 0.75:
+    elif micro_recall >= 0.75:
         verdict = "△ 能用——召回基本够，但漏抽集中在某些 kind，看 prompt 能否改进"
     else:
         verdict = "✗ 需优化——召回不足 75%"

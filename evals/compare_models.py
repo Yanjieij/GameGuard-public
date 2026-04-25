@@ -35,7 +35,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from evals.common import confirm_real_run
-from evals.design_doc.eval_design_doc import load_golden, score_bundle
+from evals.design_doc.eval_design_doc import DEFAULT_CASE_NAMES, EVAL_CASES, load_golden, score_bundle
 from evals.test_gen.eval_test_gen import (
     ALL_BUG_IDS,
     evaluate_plan,
@@ -54,6 +54,9 @@ class ModelSpec:
     name: str              # 展示用，例 "deepseek"
     model: str             # LiteLLM model 字符串，例 "deepseek/deepseek-chat"
     disable_thinking: bool = False
+    temperature: float = 0.0  # 0=默认确定性；部分模型只支持默认值1.0
+    reasoning_effort: str | None = None  # OpenAI reasoning effort: "none" 关闭思考
+    thinking_mode: str | None = None  # DeepSeek V4: "non-thinking" | "thinking" | "thinking_max"
     note: str = ""         # 备注，例 "推理型，默认 disable_thinking"
 
 
@@ -63,6 +66,31 @@ REGISTRY = {
         model="deepseek/deepseek-chat",
         disable_thinking=False,
         note="非推理型，tool-calling 最稳",
+    ),
+    # DeepSeek V4 (2026-04-24 发布) 当前 API 过渡期：
+    #   不带 disable_thinking → API 路由到旧的 deepseek-reasoner 端点
+    #   → reasoner 不支持 tool_choice → BadRequestError。
+    #   已尝试过 4 种方案（见 2026-04-26 实验记录）：
+    #     1. disable_thinking=False                         → ❌
+    #     2. + thinking_mode="non-thinking" (extra_body)    → ❌
+    #     3. 换用 deepseek/ provider 绕过 _PROVIDER_MAP     → ❌
+    #     4. 原生 V4 参数 thinking=enabled + reasoning_effort=high → ❌
+    #   全部失败，根因在 DeepSeek API 端——模型名路由到 reasoner。
+    #   disable_thinking=True 发 GLM 语法的 thinking: {type:"disabled"}
+    #   被 DeepSeek API 兼容识别 → 路由到 chat 变体 → 100% DD / 80% TG。
+    #   等 2026-07-24 旧端点停用后，可切为 reasoning_effort="high"
+    #   + thinking_mode="thinking"（原生参数，基础设施已就绪）。
+    "deepseek-v4-flash": ModelSpec(
+        name="DeepSeek-V4-Flash",
+        model="deepseek-v4/deepseek-v4-flash",
+        disable_thinking=True,
+        note="V4 快速档；API 过渡期必须 disable_thinking，否则路由到 reasoner",
+    ),
+    "deepseek-v4-pro": ModelSpec(
+        name="DeepSeek-V4-Pro",
+        model="deepseek-v4/deepseek-v4-pro",
+        disable_thinking=True,
+        note="V4 高质量档；API 过渡期必须 disable_thinking，否则路由到 reasoner",
     ),
     "glm-4.6": ModelSpec(
         name="GLM-4.6",
@@ -79,14 +107,28 @@ REGISTRY = {
     "glm-5.1": ModelSpec(
         name="GLM-5.1",
         model="zai/glm-5.1",
-        disable_thinking=True,  # 推理型标配，否则多轮 tool-calling 容易静默
-        note="Z.AI GLM-5.1 推理型，disable_thinking 开启",
+        disable_thinking=False,
+        note="Z.AI GLM-5.1 推理型；开推理后 v1 pass 77.8%→100%，Token 57k→30k",
     ),
     "gpt-4.1": ModelSpec(
         name="GPT-4.1",
         model="openai/gpt-4.1",
         disable_thinking=False,
         note="OpenAI 2025 年 tool-use 优化款，function-calling 原产地",
+    ),
+    "gpt-5.4": ModelSpec(
+        name="GPT-5.4",
+        model="openai/gpt-5.4",
+        disable_thinking=False,
+        note="OpenAI flagship model for complex reasoning and coding",
+    ),
+    "gpt-5.5": ModelSpec(
+        name="GPT-5.5",
+        model="openai/gpt-5.5",
+        disable_thinking=False,
+        temperature=1.0,
+        reasoning_effort="none",
+        note="OpenAI latest flagship; reasoning_effort=none 关闭思考以稳定 tool-calling",
     ),
     # Gemini 2.5 Flash / Pro 已从 REGISTRY 下线：
     #   - LiteLLM 1.83 未翻译 tool_choice="required" 到 FunctionCallingConfig.mode="ANY"
@@ -136,6 +178,28 @@ def _make_client_for_model(spec: ModelSpec, session_id: str):
     trace = LLMTrace(path=trace_path, session_id=session_id)
 
     resolved_model, extra = _resolve_provider(spec.model)
+    # _PROVIDER_MAP 途径的 model（当前仅 deepseek-v4）：
+    # reasoning_effort + thinking 须放入 extra_body，因为 openai/ 兼容路由
+    # 会拒绝顶层参数。OpenAI 原生（GPT-5.5）不触发此分支，走顶层参数。
+    #
+    # 注：DeepSeek V4 目前 disable_thinking=True 即可工作（GLM 兼容参数），
+    # thinking_mode + reasoning_effort 是预留的原生切换路径，
+    # 待 2026-07 旧端点停用后启用。
+    is_custom_provider = resolved_model.startswith("openai/") and resolved_model != spec.model
+    if is_custom_provider:
+        existing_body = extra.get("extra_body") or {}
+        if spec.reasoning_effort is not None:
+            existing_body["reasoning_effort"] = spec.reasoning_effort
+        if spec.thinking_mode is not None:
+            if spec.thinking_mode == "non-thinking":
+                existing_body["thinking"] = {"type": "disabled"}
+            else:
+                existing_body["thinking"] = {"type": "enabled"}
+        if existing_body:
+            extra["extra_body"] = existing_body
+    else:
+        if spec.reasoning_effort is not None:
+            extra["reasoning_effort"] = spec.reasoning_effort
     return LLMClient(
         model=resolved_model,
         cache=cache,
@@ -143,6 +207,7 @@ def _make_client_for_model(spec: ModelSpec, session_id: str):
         usd_budget=None,
         token_budget=None,
         default_agent=session_id,
+        temperature=spec.temperature,
         extra_kwargs=extra,
         disable_thinking=spec.disable_thinking,
     )
@@ -158,29 +223,55 @@ def _usage_from_client(client) -> tuple[int, int, float]:
 # --- 单次 run --------------------------------------------------------------
 
 def run_design_doc_once(spec: ModelSpec, run_index: int) -> RunRecord:
-    """跑一次 DesignDoc on 指定 model，回一份 RunRecord。"""
+    """跑一次 DesignDoc suite on 指定 model，回一份 RunRecord。"""
     session_id = f"cmp-design-{spec.name.lower().replace('.','_')}-r{run_index}"
     client = _make_client_for_model(spec, session_id)
     record = RunRecord(provider=spec.name, eval_name="design_doc")
 
-    golden_path = Path("evals/design_doc/golden_invariants.yaml")
-    required, optional = load_golden(golden_path)
-
     t0 = time.perf_counter()
     try:
-        result = run_design_doc_agent(
-            doc_paths=[Path("docs/example_skill_v1.md")],
-            llm=client,
-        )
+        total_required = 0
+        total_hit_required = 0
+        total_accepted = 0
+        total_extracted = 0
+        total_steps = 0
+        case_scores: dict[str, dict[str, Any]] = {}
+
+        for case_name in DEFAULT_CASE_NAMES:
+            case = EVAL_CASES[case_name]
+            required, optional = load_golden(case.golden_path)
+            result = run_design_doc_agent(doc_paths=[case.doc_path], llm=client)
+            scored = score_bundle(result.bundle, required, optional)
+            total_required += scored["required_count"]
+            total_hit_required += scored["hit_required_count"]
+            total_accepted += scored["accepted_count"]
+            total_extracted += scored["total_extracted"]
+            total_steps += result.stats.steps
+            case_scores[case_name] = {
+                "recall": scored["recall"],
+                "precision": scored["precision"],
+                "hit_required": scored["hit_required_count"],
+                "required": scored["required_count"],
+                "missed": scored["missed"],
+                "novel": scored["novel"],
+            }
+
         record.wall_seconds = time.perf_counter() - t0
-        scored = score_bundle(result.bundle, required, optional)
-        record.recall = scored["recall"]
-        record.precision = scored["precision"]
-        record.steps = result.stats.steps
+        record.recall = (
+            total_hit_required / total_required if total_required else 0.0
+        )
+        record.precision = (
+            total_accepted / total_extracted if total_extracted else 0.0
+        )
+        record.steps = total_steps
         record.extras = {
-            "total_extracted": scored["total_extracted"],
-            "hit_required": scored["hit_required_count"],
-            "missed_count": len(scored["missed"]),
+            "cases": case_scores,
+            "total_extracted": total_extracted,
+            "hit_required": total_hit_required,
+            "required": total_required,
+            "missed_count": sum(
+                len(case["missed"]) for case in case_scores.values()
+            ),
         }
     except Exception as e:
         record.wall_seconds = time.perf_counter() - t0

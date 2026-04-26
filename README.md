@@ -47,9 +47,9 @@ GameGuard 是**后一条路的完整工程参考实现**：从策划文档到 Ji
 
 ## 2. 架构总览
 
-![GameGuard 架构](docs/architecture.drawio.png)
+![GameGuard 架构](docs/gameguard_architecture.svg)
 
-> 源文件：[`docs/architecture.drawio`](docs/architecture.drawio)（draw.io 可编辑，PNG 内嵌 XML，拖回 draw.io 即可修改）
+> 图示按当前代码结构重绘；旧版 DrawIO 源文件仍保留在 `docs/*.drawio` 作为历史版本。
 
 **分层解读**（上到下）：
 
@@ -160,7 +160,7 @@ gameguard triage --suite artifacts/suite.json
 
 ## 5. Agent 管线
 
-![Agent 管线](docs/agent_pipeline.drawio.png)
+![Agent 管线](docs/agent_pipeline.svg)
 
 上图展示了 plan-and-execute 的完整数据流。核心流程：
 
@@ -190,7 +190,7 @@ BugReport (Jira 兼容)
 | **CriticAgent** | `TestPlan` | 修补后的 `TestPlan` | 在跑之前修复 LLM 生成的错误用例 |
 | **ExploratoryAgent** | InvariantBundle + SkillBook | `TestPlan`（对抗式用例） | 模拟"恶意玩家"尝试让不变式变红 |
 
-详细设计见 [`docs/technical-guide.md`](docs/technical-guide.md)。
+详细设计见 [`Technical Guide.md`](Technical%20Guide.md)。
 
 ---
 
@@ -198,6 +198,8 @@ BugReport (Jira 兼容)
 
 所有沙箱实现同一个 `GameAdapter` 接口（`reset / step / trace / snapshot / restore`），
 Agent 和 Runner 层面对沙箱类型无感知。
+
+![沙箱系统](docs/sandbox_system.svg)
 
 ### PySim — 技能系统沙箱
 
@@ -237,6 +239,8 @@ make test-unity
 `evals/compare_models.py` 提供跨 provider 对比框架。
 
 完整数据见 [`EVAL.md`](EVAL.md) 和 [`evals/compare_models/results.md`](evals/compare_models/results.md)。
+
+![差分回归与 Triage](docs/regression_triage_flow.svg)
 
 ### Agent 基准表现
 
@@ -305,8 +309,8 @@ GameGuard/
 │   └── rollup.py             #   聚合各 eval 到 EVAL.md
 ├── docs/                     # 设计文档 + 架构图
 │   ├── example_skill_v1.md   #   示例策划文档（Agent 的输入）
-│   ├── technical-guide.md    #   技术文档
-│   ├── *.drawio.png          #   架构图
+│   ├── *.svg                 #   README 架构图 / 流程图
+│   ├── *.drawio              #   历史 DrawIO 源文件
 │   └── archive/              #   历史版本
 ├── testcases/                # YAML 测试计划
 │   ├── skill_system/         #   手写 + Agent 生成
@@ -316,6 +320,7 @@ GameGuard/
 ├── pyproject.toml            # 项目配置
 ├── .env.example              # 环境变量模板
 ├── EVAL.md                   # Agent 评估结果汇总
+├── Technical Guide.md        # 技术文档
 └── README.md                 # 本文件
 ```
 

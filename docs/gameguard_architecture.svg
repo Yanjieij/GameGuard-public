@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title desc">
+  <title id="title">GameGuard architecture overview</title>
+  <desc id="desc">Layered architecture from CLI and CI entry points through orchestrator, agents, tools, domain models, runner, adapters, sandboxes, and reports.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f7f9fb}.title{font:700 34px Arial,"Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:16px Arial,"Microsoft YaHei",sans-serif;fill:#52667a}.band{fill:#fff;stroke:#d8e1ea;stroke-width:2}.label{font:700 18px Arial,"Microsoft YaHei",sans-serif;fill:#20364d}.txt{font:14px Arial,"Microsoft YaHei",sans-serif;fill:#33485c}.small{font:12px Arial,"Microsoft YaHei",sans-serif;fill:#5b6f82}.center{text-anchor:middle}.chip{stroke-width:1.5}.c1{fill:#e8f3ff;stroke:#5aa0d8}.c2{fill:#fff3df;stroke:#e0a84a}.c3{fill:#ecf8ee;stroke:#60b36b}.c4{fill:#f5ebff;stroke:#9b72d0}.c5{fill:#ffeceb;stroke:#d56c64}.c6{fill:#eef1f4;stroke:#8ea0ad}.arrow{fill:none;stroke:#607d96;stroke-width:2.2;marker-end:url(#arrow)}.stage{font:700 13px Arial,"Microsoft YaHei",sans-serif;fill:#6d7f91;letter-spacing:.5px}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#607d96"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1d3557" flood-opacity=".12"/>
+    </filter>
+  </defs>
+  <rect class="bg" width="1280" height="900"/>
+  <text class="title" x="48" y="58">GameGuard 架构总览</text>
+  <text class="sub" x="48" y="88">LLM 负责把策划语义编译成可审查产物；Runner 和沙箱负责确定性执行、证据落盘与回归判定。</text>
+
+  <rect class="band" x="42" y="124" width="1196" height="84" rx="10" filter="url(#shadow)"/>
+  <text class="stage" x="64" y="152">入口层：给开发者、CI 和 Demo 使用</text>
+  <rect class="chip c1" x="64" y="166" width="170" height="28" rx="6"/><text class="txt center" x="149" y="185">Typer CLI</text>
+  <rect class="chip c1" x="254" y="166" width="220" height="28" rx="6"/><text class="txt center" x="364" y="185">run / generate</text>
+  <rect class="chip c1" x="494" y="166" width="180" height="28" rx="6"/><text class="txt center" x="584" y="185">regress / triage</text>
+  <rect class="chip c1" x="694" y="166" width="170" height="28" rx="6"/><text class="txt center" x="779" y="185">Makefile / CI</text>
+  <rect class="chip c1" x="884" y="166" width="300" height="28" rx="6"/><text class="txt center" x="1034" y="185">YAML 测试计划 + artifacts</text>
+
+  <rect class="band" x="42" y="242" width="1196" height="112" rx="10" filter="url(#shadow)"/>
+  <text class="stage" x="64" y="270">工作流编排：把 Agent 阶段和确定性执行拆开</text>
+  <rect class="chip c2" x="64" y="288" width="270" height="42" rx="7"/><text class="label" x="84" y="314">Orchestrator</text>
+  <text class="small" x="358" y="304">Plan：读文档 → 抽不变式 → 生成 TestPlan，可选 Critic 修补</text>
+  <text class="small" x="358" y="326">Execute：Runner 跑沙箱 → 失败再 Triage；落盘产物可复用，不必重调 LLM</text>
+  <rect class="chip c2" x="914" y="288" width="270" height="42" rx="7"/><text class="txt center" x="1049" y="314">review_hook 扩展点</text>
+
+  <rect class="band" x="42" y="388" width="1196" height="128" rx="10" filter="url(#shadow)"/>
+  <text class="stage" x="64" y="416">Agent 层：每个 Agent 只负责一个可解释的 QA 子任务</text>
+  <rect class="chip c4" x="64" y="438" width="205" height="48" rx="7"/><text class="label center" x="166.5" y="462">DesignDocAgent</text><text class="small center" x="166.5" y="480">文档 → 不变式</text>
+  <rect class="chip c4" x="292" y="438" width="205" height="48" rx="7"/><text class="label center" x="394.5" y="462">TestGenAgent</text><text class="small center" x="394.5" y="480">不变式 → 用例</text>
+  <rect class="chip c4" x="520" y="438" width="190" height="48" rx="7"/><text class="label center" x="615" y="462">CriticAgent</text><text class="small center" x="615" y="480">修补错误用例</text>
+  <rect class="chip c4" x="733" y="438" width="190" height="48" rx="7"/><text class="label center" x="828" y="462">TriageAgent</text><text class="small center" x="828" y="480">失败 → Bug 单</text>
+  <rect class="chip c4" x="946" y="438" width="238" height="48" rx="7"/><text class="label center" x="1065" y="462">ExploratoryAgent</text><text class="small center" x="1065" y="480">对抗式探索</text>
+
+  <rect class="band" x="42" y="550" width="1196" height="94" rx="10" filter="url(#shadow)"/>
+  <text class="stage" x="64" y="578">共享平台：让 Prompt、工具和领域模型保持强约束</text>
+  <rect class="chip c3" x="64" y="596" width="236" height="30" rx="6"/><text class="txt center" x="182" y="616">手写 AgentLoop</text>
+  <rect class="chip c3" x="320" y="596" width="236" height="30" rx="6"/><text class="txt center" x="438" y="616">Pydantic 工具 schema</text>
+  <rect class="chip c3" x="576" y="596" width="236" height="30" rx="6"/><text class="txt center" x="694" y="616">缓存 / 预算 / trace</text>
+  <rect class="chip c3" x="832" y="596" width="352" height="30" rx="6"/><text class="txt center" x="1008" y="616">Action · Skill · Quest · 19 类不变式</text>
+
+  <rect class="band" x="42" y="678" width="1196" height="146" rx="10" filter="url(#shadow)"/>
+  <text class="stage" x="64" y="706">确定性执行：同 seed、同沙箱版本可复现同一条 trace</text>
+  <rect class="chip c5" x="64" y="728" width="190" height="56" rx="7"/><text class="label center" x="159" y="753">Test Runner</text><text class="small center" x="159" y="772">断言 + 证据落盘</text>
+  <rect class="chip c5" x="292" y="728" width="236" height="56" rx="7"/><text class="label center" x="410" y="753">GameAdapter ABC</text><text class="small center" x="410" y="772">统一沙箱协议</text>
+  <rect class="chip c6" x="568" y="716" width="172" height="80" rx="7"/><text class="label center" x="654" y="740">PySim</text><text class="small center" x="654" y="760">技能系统 v1/v2</text><text class="small center" x="654" y="778">5 类植入 bug</text>
+  <rect class="chip c6" x="764" y="716" width="190" height="80" rx="7"/><text class="label center" x="859" y="740">QuestSim</text><text class="small center" x="859" y="760">任务 / 3D / 对话</text><text class="small center" x="859" y="778">Harbor 场景</text>
+  <rect class="chip c6" x="978" y="716" width="206" height="80" rx="7"/><text class="label center" x="1081" y="740">UnityAdapter</text><text class="small center" x="1081" y="760">Mock 或 headless gRPC</text><text class="small center" x="1081" y="778">复用统一状态模型</text>
+
+  <rect class="band" x="42" y="848" width="1196" height="34" rx="10"/>
+  <text class="small center" x="640" y="870">产物：TestPlan YAML · suite.json · JSONL trace · snapshot · Markdown 报告 · Jira Bug 单 · HTML 回归报告</text>
+
+  <path class="arrow" d="M640 208 V242"/>
+  <path class="arrow" d="M640 354 V388"/>
+  <path class="arrow" d="M640 516 V550"/>
+  <path class="arrow" d="M640 644 V678"/>
+  <path class="arrow" d="M254 756 H292"/>
+  <path class="arrow" d="M528 756 H568"/>
+</svg>

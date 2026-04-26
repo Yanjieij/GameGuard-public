@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">GameGuard agent pipeline</title>
+  <desc id="desc">Plan-and-execute pipeline from design document to invariant bundle, test plan, runner results, triage reports, and reviewable artifacts.</desc>
+  <defs>
+    <style>
+      .bg{fill:#fbfcfe}.title{font:700 34px Arial,"Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:16px Arial,"Microsoft YaHei",sans-serif;fill:#52667a}.panel{fill:#fff;stroke:#d7e1eb;stroke-width:2}.box{stroke-width:1.8}.doc{fill:#e9f4ff;stroke:#4e97d1}.agent{fill:#f2ecff;stroke:#8f6cc9}.data{fill:#ecf8ef;stroke:#58a76a}.exec{fill:#fff1df;stroke:#d99b3d}.fail{fill:#ffeded;stroke:#d96d67}.out{fill:#eef1f4;stroke:#8395a3}.label{font:700 17px Arial,"Microsoft YaHei",sans-serif;fill:#21364d}.txt{font:14px Arial,"Microsoft YaHei",sans-serif;fill:#34495e}.small{font:12px Arial,"Microsoft YaHei",sans-serif;fill:#5c7083}.center{text-anchor:middle}.stage{font:700 14px Arial,"Microsoft YaHei",sans-serif;fill:#66798b;letter-spacing:.5px}.arrow{fill:none;stroke:#607d96;stroke-width:2.4;marker-end:url(#arrow)}.dash{fill:none;stroke:#8499ad;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#607d96"/></marker>
+  </defs>
+  <rect class="bg" width="1280" height="760"/>
+  <text class="title" x="48" y="58">Agent 管线：Plan-and-Execute</text>
+  <text class="sub" x="48" y="88">LLM 只参与“理解与编译”，确定性执行和差分判定全部由本地代码完成，方便缓存、复现和 code review。</text>
+
+  <rect class="panel" x="42" y="122" width="1196" height="250" rx="12"/>
+  <text class="stage" x="66" y="152">PLAN 阶段：自然语言 → 可审查测试计划</text>
+  <rect class="box doc" x="66" y="182" width="180" height="72" rx="8"/><text class="label center" x="156" y="210">策划文档</text><text class="small center" x="156" y="232">技能表 / 规则 / GWT</text>
+  <rect class="box agent" x="300" y="172" width="206" height="92" rx="8"/><text class="label center" x="403" y="200">DesignDocAgent</text><text class="small center" x="403" y="222">读章节，找可验证规则</text><text class="small center" x="403" y="240">逐条 emit_invariant</text>
+  <rect class="box data" x="562" y="182" width="184" height="72" rx="8"/><text class="label center" x="654" y="210">InvariantBundle</text><text class="small center" x="654" y="232">结构化 QA 合同</text>
+  <rect class="box agent" x="800" y="172" width="206" height="92" rx="8"/><text class="label center" x="903" y="200">TestGenAgent</text><text class="small center" x="903" y="222">查技能 / 角色 / 约束</text><text class="small center" x="903" y="240">生成动作序列</text>
+  <rect class="box data" x="1054" y="182" width="150" height="72" rx="8"/><text class="label center" x="1129" y="210">TestPlan</text><text class="small center" x="1129" y="232">YAML 可 review</text>
+  <path class="arrow" d="M246 218 H300"/><path class="arrow" d="M506 218 H562"/><path class="arrow" d="M746 218 H800"/><path class="arrow" d="M1006 218 H1054"/>
+
+  <rect class="box out" x="562" y="288" width="184" height="48" rx="7"/><text class="txt center" x="654" y="318">抽取理由 / 来源章节</text>
+  <rect class="box agent" x="800" y="288" width="206" height="48" rx="7"/><text class="txt center" x="903" y="318">可选 Critic 修补</text>
+  <path class="dash" d="M654 254 V288"/><path class="dash" d="M903 264 V288"/>
+
+  <rect class="panel" x="42" y="410" width="1196" height="234" rx="12"/>
+  <text class="stage" x="66" y="440">EXECUTE 阶段：确定性执行 → 证据 → Bug 单</text>
+  <rect class="box data" x="66" y="474" width="166" height="66" rx="8"/><text class="label center" x="149" y="502">TestPlan</text><text class="small center" x="149" y="524">手写或 Agent 生成</text>
+  <rect class="box exec" x="286" y="462" width="196" height="92" rx="8"/><text class="label center" x="384" y="490">Runner</text><text class="small center" x="384" y="512">按 seed reset</text><text class="small center" x="384" y="530">逐动作 step + 断言</text>
+  <rect class="box exec" x="536" y="474" width="184" height="66" rx="8"/><text class="label center" x="628" y="502">GameAdapter</text><text class="small center" x="628" y="524">三类后端统一协议</text>
+  <rect class="box data" x="774" y="474" width="178" height="66" rx="8"/><text class="label center" x="863" y="502">SuiteResult</text><text class="small center" x="863" y="524">通过 / 失败 / 异常</text>
+  <rect class="box fail" x="1006" y="462" width="198" height="92" rx="8"/><text class="label center" x="1105" y="490">TriageAgent</text><text class="small center" x="1105" y="512">按失败签名聚类</text><text class="small center" x="1105" y="530">产出 Jira Bug 单</text>
+  <path class="arrow" d="M232 507 H286"/><path class="arrow" d="M482 507 H536"/><path class="arrow" d="M720 507 H774"/><path class="arrow" d="M952 507 H1006"/>
+  <rect class="box out" x="286" y="578" width="196" height="38" rx="7"/><text class="txt center" x="384" y="602">事件 trace</text>
+  <rect class="box out" x="536" y="578" width="184" height="38" rx="7"/><text class="txt center" x="628" y="602">状态快照</text>
+  <rect class="box out" x="774" y="578" width="178" height="38" rx="7"/><text class="txt center" x="863" y="602">suite.json</text>
+  <path class="dash" d="M384 554 V578"/><path class="dash" d="M628 540 V578"/><path class="dash" d="M863 540 V578"/>
+
+  <rect class="panel" x="42" y="676" width="1196" height="48" rx="12"/>
+  <text class="txt" x="66" y="706">边界原则：LLM 产物落盘为 YAML / JSON，可缓存和 review；执行阶段不依赖 LLM，所以同 seed + 同沙箱版本会得到同 trace。</text>
+</svg>

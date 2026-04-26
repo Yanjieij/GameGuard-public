@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">GameGuard sandbox system</title>
+  <desc id="desc">Sandbox routing through GameAdapter to PySim, QuestSim, and Unity, with deterministic artifacts for triage and regression.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f8fafc}.title{font:700 34px Arial,"Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:16px Arial,"Microsoft YaHei",sans-serif;fill:#52667a}.panel{fill:#fff;stroke:#d7e1eb;stroke-width:2}.box{stroke-width:1.8}.route{fill:#e9f4ff;stroke:#4e97d1}.adapter{fill:#fff3df;stroke:#dc9b35}.pysim{fill:#ecf8ef;stroke:#58a76a}.quest{fill:#f2ecff;stroke:#8f6cc9}.unity{fill:#ffeded;stroke:#d96d67}.out{fill:#eef1f4;stroke:#8395a3}.label{font:700 17px Arial,"Microsoft YaHei",sans-serif;fill:#21364d}.txt{font:14px Arial,"Microsoft YaHei",sans-serif;fill:#34495e}.small{font:12px Arial,"Microsoft YaHei",sans-serif;fill:#5c7083}.code{font:13px Menlo,Consolas,monospace;fill:#2f4051}.center{text-anchor:middle}.arrow{fill:none;stroke:#607d96;stroke-width:2.4;marker-end:url(#arrow)}.dash{fill:none;stroke:#8499ad;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#607d96"/></marker>
+  </defs>
+  <rect class="bg" width="1280" height="760"/>
+  <text class="title" x="48" y="58">沙箱系统：一个 Adapter，三类执行后端</text>
+  <text class="sub" x="48" y="88">Runner 只认识统一协议；技能、任务、Unity headless 都被收敛到相同的 reset / step / trace / snapshot / restore 契约。</text>
+
+  <rect class="panel" x="48" y="126" width="1184" height="112" rx="12"/>
+  <rect class="box route" x="74" y="158" width="236" height="48" rx="8"/><text class="label center" x="192" y="188">沙箱规格字符串</text>
+  <text class="code" x="338" y="175">pysim:v1 · pysim:v2 · questsim:v1-harbor · unity:mock · unity:headless+pysim:v2</text>
+  <text class="small" x="338" y="204">resolve_sandbox_factory() 是唯一入口；同一套 case 只换规格字符串就能跑不同后端。</text>
+
+  <rect class="box adapter" x="434" y="292" width="412" height="122" rx="12"/>
+  <text class="label" x="462" y="326">GameAdapter ABC</text>
+  <text class="code" x="462" y="354">reset(seed)  step(action)  state()</text>
+  <text class="code" x="462" y="378">trace()      snapshot()     restore(bytes)</text>
+  <text class="small" x="462" y="400">契约：确定性、事件追加、快照 round-trip 不漂移</text>
+
+  <rect class="box pysim" x="74" y="490" width="320" height="128" rx="12"/>
+  <text class="label" x="100" y="522">PySim</text>
+  <text class="txt" x="100" y="550">技能系统：4 个技能 + 3 种 Buff</text>
+  <text class="small" x="100" y="574">v1 黄金实现：CD、MP、暴击、DoT</text>
+  <text class="small" x="100" y="596">v2 植入：CD、刷新、RNG、状态清理 bug</text>
+
+  <rect class="box quest" x="480" y="490" width="320" height="128" rx="12"/>
+  <text class="label" x="506" y="522">QuestSim</text>
+  <text class="txt" x="506" y="550">任务 + 3D：状态机、寻路、对话树</text>
+  <text class="small" x="506" y="574">Harbor 场景：NPC、触发器、存档读档</text>
+  <text class="small" x="506" y="596">可选 PyBullet 后端用于真实刚体物理</text>
+
+  <rect class="box unity" x="886" y="490" width="320" height="128" rx="12"/>
+  <text class="label" x="912" y="522">UnityAdapter</text>
+  <text class="txt" x="912" y="550">mock 回放或 headless gRPC 真通路</text>
+  <text class="small" x="912" y="574">Python 侧仍返回统一状态和事件日志</text>
+  <text class="small" x="912" y="596">backend 可指向 PySim 或 QuestSim</text>
+
+  <rect class="panel" x="48" y="656" width="1184" height="56" rx="12"/>
+  <rect class="box out" x="74" y="670" width="216" height="28" rx="6"/><text class="txt center" x="182" y="690">trace JSONL</text>
+  <rect class="box out" x="316" y="670" width="216" height="28" rx="6"/><text class="txt center" x="424" y="690">snapshot .bin</text>
+  <rect class="box out" x="558" y="670" width="216" height="28" rx="6"/><text class="txt center" x="666" y="690">suite.json</text>
+  <rect class="box out" x="800" y="670" width="382" height="28" rx="6"/><text class="txt center" x="991" y="690">确定性重放 / 存档读档不变式</text>
+
+  <path class="arrow" d="M640 238 V292"/>
+  <path class="arrow" d="M640 414 V456 H234 V490"/>
+  <path class="arrow" d="M640 414 V490"/>
+  <path class="arrow" d="M640 414 V456 H1046 V490"/>
+  <path class="dash" d="M234 618 V656"/>
+  <path class="dash" d="M640 618 V656"/>
+  <path class="dash" d="M1046 618 V656"/>
+</svg>

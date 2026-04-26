@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">GameGuard regression and triage flow</title>
+  <desc id="desc">Differential regression flow comparing baseline and candidate suites, classifying results, triaging new failures, and writing an HTML report.</desc>
+  <defs>
+    <style>
+      .bg{fill:#fbfcfe}.title{font:700 34px Arial,"Microsoft YaHei",sans-serif;fill:#17324d}.sub{font:16px Arial,"Microsoft YaHei",sans-serif;fill:#52667a}.panel{fill:#fff;stroke:#d7e1eb;stroke-width:2}.box{stroke-width:1.8}.input{fill:#e9f4ff;stroke:#4e97d1}.run{fill:#fff3df;stroke:#dc9b35}.diff{fill:#ecf8ef;stroke:#58a76a}.bug{fill:#ffeded;stroke:#d96d67}.out{fill:#eef1f4;stroke:#8395a3}.label{font:700 17px Arial,"Microsoft YaHei",sans-serif;fill:#21364d}.txt{font:14px Arial,"Microsoft YaHei",sans-serif;fill:#34495e}.small{font:12px Arial,"Microsoft YaHei",sans-serif;fill:#5c7083}.code{font:13px Menlo,Consolas,monospace;fill:#2f4051}.center{text-anchor:middle}.arrow{fill:none;stroke:#607d96;stroke-width:2.4;marker-end:url(#arrow)}.dash{fill:none;stroke:#8499ad;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#arrow)}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#607d96"/></marker>
+  </defs>
+  <rect class="bg" width="1280" height="720"/>
+  <text class="title" x="48" y="58">差分回归与自动 Triage</text>
+  <text class="sub" x="48" y="88">同一份 TestPlan 分别跑黄金版本和候选版本；只有 candidate 新增的失败会触发 TriageAgent 并阻断发布。</text>
+
+  <rect class="panel" x="48" y="126" width="1184" height="466" rx="12"/>
+  <rect class="box input" x="86" y="314" width="166" height="72" rx="8"/><text class="label center" x="169" y="344">TestPlan</text><text class="small center" x="169" y="366">case_id 作为关联键</text>
+
+  <rect class="box run" x="342" y="186" width="210" height="92" rx="8"/><text class="label center" x="447" y="216">基线执行</text><text class="code center" x="447" y="240">sandbox=pysim:v1</text><text class="small center" x="447" y="260">黄金实现，代表正确行为</text>
+  <rect class="box run" x="342" y="420" width="210" height="92" rx="8"/><text class="label center" x="447" y="450">候选执行</text><text class="code center" x="447" y="474">sandbox=pysim:v2</text><text class="small center" x="447" y="494">待发布版本，可能含回归</text>
+
+  <rect class="box out" x="622" y="196" width="190" height="72" rx="8"/><text class="label center" x="717" y="226">suite.json</text><text class="small center" x="717" y="248">基线结果</text>
+  <rect class="box out" x="622" y="430" width="190" height="72" rx="8"/><text class="label center" x="717" y="460">suite.json</text><text class="small center" x="717" y="482">候选结果</text>
+
+  <rect class="box diff" x="870" y="268" width="260" height="164" rx="10"/>
+  <text class="label center" x="1000" y="300">差分分类</text>
+  <text class="txt" x="894" y="330">NEW：基线过，候选失败</text>
+  <text class="txt" x="894" y="354">FIXED：基线失败，候选过</text>
+  <text class="txt" x="894" y="378">STABLE_PASS：两边都过</text>
+  <text class="txt" x="894" y="402">STABLE_FAIL：两边都失败</text>
+
+  <rect class="box bug" x="870" y="486" width="260" height="68" rx="8"/><text class="label center" x="1000" y="516">TriageAgent</text><text class="small center" x="1000" y="538">只分析 NEW，聚类成 Bug 单</text>
+
+  <path class="arrow" d="M252 350 C304 332 310 232 342 232"/>
+  <path class="arrow" d="M252 350 C304 370 310 466 342 466"/>
+  <path class="arrow" d="M552 232 H622"/>
+  <path class="arrow" d="M552 466 H622"/>
+  <path class="arrow" d="M812 232 C850 246 858 278 870 318"/>
+  <path class="arrow" d="M812 466 C850 452 858 420 870 382"/>
+  <path class="arrow" d="M1000 432 V486"/>
+
+  <rect class="panel" x="48" y="626" width="1184" height="54" rx="12"/>
+  <text class="small" x="74" y="618">最终写入单页 HTML：同时展示差分分类、自动聚类出的 Bug、证据链接和可用于 CI 的退出码。</text>
+  <rect class="box out" x="74" y="640" width="260" height="28" rx="6"/><text class="txt center" x="204" y="660">HTML 回归报告</text>
+  <rect class="box out" x="360" y="640" width="260" height="28" rx="6"/><text class="txt center" x="490" y="660">内嵌 Bug 卡片</text>
+  <rect class="box out" x="646" y="640" width="260" height="28" rx="6"/><text class="txt center" x="776" y="660">trace / snapshot 链接</text>
+  <rect class="box out" x="932" y="640" width="250" height="28" rx="6"/><text class="txt center" x="1057" y="660">退出码：0 / 1 / 2</text>
+</svg>

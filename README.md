@@ -37,11 +37,11 @@ GameGuard 模拟真实游戏团队的 QA 工作流：策划写设计文档，程
 GameGuard 是**后一条路的完整工程参考实现**：从策划文档到 Jira Bug 单全流程打通，
 双沙箱覆盖游戏 QA 真实工作量的大约 75%（技能数值 20% + 任务/3D 交互 55%）。
 
-| 核心能力 | 本项目体现 |
-|---|---|
+| 核心能力                       | 本项目体现                                            |
+| ------------------------------ | ----------------------------------------------------- |
 | LLM Agent 在游戏研发管线的落地 | 5 Agent 协作 · plan-and-execute · tool-calling 工业化 |
-| Agent 驱动的自动化测试工具链 | 文档→不变式→测试用例→执行→Bug 单 闭环 |
-| 跨引擎 / 策划 / 程序协作 | 双沙箱 + Unity gRPC 通路 · 设计规范工程化 |
+| Agent 驱动的自动化测试工具链   | 文档→不变式→测试用例→执行→Bug 单 闭环                 |
+| 跨引擎 / 策划 / 程序协作       | 双沙箱 + Unity gRPC 通路 · 设计规范工程化             |
 
 ---
 
@@ -49,7 +49,6 @@ GameGuard 是**后一条路的完整工程参考实现**：从策划文档到 Ji
 
 ![GameGuard 架构](docs/gameguard_architecture.svg)
 
-> 图示按当前代码结构重绘；旧版 DrawIO 源文件仍保留在 `docs/*.drawio` 作为历史版本。
 
 **分层解读**（上到下）：
 
@@ -88,11 +87,11 @@ cp .env.example .env
 
 编辑 `.env`，至少填一个 provider 的 API key：
 
-| Provider | 模型示例 | 环境变量 |
-|---|---|---|
+| Provider | 模型示例                 | 环境变量           |
+| -------- | ------------------------ | ------------------ |
 | DeepSeek | `deepseek/deepseek-chat` | `DEEPSEEK_API_KEY` |
-| 智谱 GLM | `zai/glm-5.1` | `ZAI_API_KEY` |
-| OpenAI | `openai/gpt-5.4` | `OPENAI_API_KEY` |
+| 智谱 GLM | `zai/glm-5.1`            | `ZAI_API_KEY`      |
+| OpenAI   | `openai/gpt-5.4`         | `OPENAI_API_KEY`   |
 
 设置主模型：
 
@@ -117,6 +116,28 @@ make test          # 跑 168 个测试
 ---
 
 ## 4. CLI 使用
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    A["你现在想做什么？"]
+    A --> B["从策划文档生成测试计划"]
+    A --> C["执行一份已有 TestPlan"]
+    A --> D["比较 v1 / v2 回归差异"]
+    A --> E["已有 suite.json，事后重新聚类"]
+
+    B --> B1["gameguard generate<br/>DesignDocAgent + TestGenAgent"]
+    B1 --> B2["输出 TestPlan YAML<br/>可人工 review / 入库"]
+
+    C --> C1["gameguard run<br/>Runner 确定性执行"]
+    C1 --> C2["输出 suite.md / suite.json<br/>trace + snapshot"]
+
+    D --> D1["gameguard regress<br/>baseline 与 candidate 各跑一次"]
+    D1 --> D2["输出 HTML 回归报告<br/>NEW / FIXED / STABLE"]
+
+    E --> E1["gameguard triage<br/>不重跑沙箱，只读失败证据"]
+    E1 --> E2["输出 Jira-compatible BugReport"]
+```
 
 ### `gameguard run` — 执行测试计划
 
@@ -164,31 +185,80 @@ gameguard triage --suite artifacts/suite.json
 
 上图展示了 plan-and-execute 的完整数据流。核心流程：
 
-```
-策划文档 (.md)
-    │
-    ▼  DesignDocAgent
-InvariantBundle (19 种不变量)
-    │
-    ▼  TestGenAgent + (可选) CriticAgent
-TestPlan (.yaml)
-    │
-    ▼  Runner (确定性，无 LLM)
-TestSuiteResult
-    │
-    ▼  TriageAgent（仅当有失败）
-BugReport (Jira 兼容)
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    subgraph Plan["Plan 阶段：LLM 参与，产物可 review"]
+        Doc["策划文档<br/>Markdown"]
+        DD["DesignDocAgent<br/>抽机器可验证规则"]
+        Inv["InvariantBundle<br/>19 种 Invariant DSL"]
+        TG["TestGenAgent<br/>生成动作序列"]
+        Critic{"开启 --critic？"}
+        Review["CriticAgent<br/>修补错误用例"]
+        PlanYaml["TestPlan YAML<br/>落盘，可入库"]
+
+        Doc --> DD --> Inv --> TG --> Critic
+        Critic -- "是" --> Review --> PlanYaml
+        Critic -- "否" --> PlanYaml
+    end
+
+    subgraph Execute["Execute 阶段：无 LLM，确定性执行"]
+        Runner["Runner<br/>按 seed reset，逐动作 step"]
+        Suite["TestSuiteResult<br/>通过 / 失败 / 异常"]
+        HasFail{"有失败？"}
+        Green["输出 suite 报告<br/>退出码 0"]
+        Triage["TriageAgent<br/>按失败签名聚类"]
+        Bugs["BugReport<br/>Jira 兼容"]
+
+        Runner --> Suite --> HasFail
+        HasFail -- "否" --> Green
+        HasFail -- "是" --> Triage --> Bugs
+    end
+
+    PlanYaml --> Runner
 ```
 
 ### 5 个 Agent 职责
 
-| Agent | 输入 | 输出 | 一句话 |
-|---|---|---|---|
-| **DesignDocAgent** | 策划 Markdown 文档 | `InvariantBundle`（机器可验证的不变式列表） | 从自然语言文档抽结构化规则 |
-| **TestGenAgent** | InvariantBundle + SkillBook + Characters | `TestPlan`（测试用例 + 动作序列） | 把不变式编译成能在沙箱执行的动作序列 |
-| **TriageAgent** | `TestSuiteResult`（有失败用例） | `BugReport` 列表（Jira 兼容） | 把分散的失败聚类成可提单的 Bug |
-| **CriticAgent** | `TestPlan` | 修补后的 `TestPlan` | 在跑之前修复 LLM 生成的错误用例 |
-| **ExploratoryAgent** | InvariantBundle + SkillBook | `TestPlan`（对抗式用例） | 模拟"恶意玩家"尝试让不变式变红 |
+| Agent                | 输入                                     | 输出                                        | 一句话                               |
+| -------------------- | ---------------------------------------- | ------------------------------------------- | ------------------------------------ |
+| **DesignDocAgent**   | 策划 Markdown 文档                       | `InvariantBundle`（机器可验证的不变式列表） | 从自然语言文档抽结构化规则           |
+| **TestGenAgent**     | InvariantBundle + SkillBook + Characters | `TestPlan`（测试用例 + 动作序列）           | 把不变式编译成能在沙箱执行的动作序列 |
+| **TriageAgent**      | `TestSuiteResult`（有失败用例）          | `BugReport` 列表（Jira 兼容）               | 把分散的失败聚类成可提单的 Bug       |
+| **CriticAgent**      | `TestPlan`                               | 修补后的 `TestPlan`                         | 在跑之前修复 LLM 生成的错误用例      |
+| **ExploratoryAgent** | InvariantBundle + SkillBook              | `TestPlan`（对抗式用例）                    | 模拟"恶意玩家"尝试让不变式变红       |
+
+### AgentLoop 内部机制
+
+GameGuard 没有引入 LangChain / LangGraph，而是用一层很薄的 `AgentLoop` 直接控制 tool-calling。
+这样每一步 prompt、tool 参数、校验错误和 observation 都会进入 trace，便于复盘和调 prompt。
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    Start["AgentLoop 启动<br/>messages + tool schemas"]
+    Chat["调用 LLMClient.chat()"]
+    Resp{"LLM 返回 tool_calls？"}
+    Done["无 tool_calls<br/>结束本轮 Agent"]
+    Dispatch["ToolRegistry.dispatch()<br/>Pydantic 校验参数"]
+    Valid{"参数合法？"}
+    Emit["执行工具<br/>emit_invariant / emit_testcase / finalize"]
+    Save["Collector 保存结构化产物"]
+    ToolOk["写入 ok observation"]
+    ToolErr["写入 error observation<br/>附 schema hint"]
+    Append["把 tool result 追加回 messages"]
+    Stop{"达到停止条件？"}
+    Artifact["最终产物<br/>InvariantBundle / TestPlan / BugReport"]
+
+    Start --> Chat --> Resp
+    Resp -- "否" --> Done --> Artifact
+    Resp -- "是" --> Dispatch --> Valid
+    Valid -- "是" --> Emit --> Save --> ToolOk --> Append
+    Valid -- "否" --> ToolErr --> Append
+    Append --> Stop
+    Stop -- "否，继续自修复或补全" --> Chat
+    Stop -- "是，finalize 或 max_steps" --> Artifact
+```
 
 详细设计见 [`Technical Guide.md`](Technical%20Guide.md)。
 
@@ -203,25 +273,25 @@ Agent 和 Runner 层面对沙箱类型无感知。
 
 ### PySim — 技能系统沙箱
 
-| 版本 | 说明 |
-|---|---|
+| 版本       | 说明                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
 | `pysim:v1` | **黄金实现**：4 个技能（Fireball/Frostbolt/Ignite/Focus）+ 3 种 Buff（Chilled/Burn/ArcanePower）+ 暴击系统 |
-| `pysim:v2` | 植入 **5 类 bug**：cooldown 计算错误、buff refresh 漂移、DoT 系数 1.05、全局 RNG、状态机清理不干净 |
+| `pysim:v2` | 植入 **5 类 bug**：cooldown 计算错误、buff refresh 漂移、DoT 系数 1.05、全局 RNG、状态机清理不干净         |
 
 ### QuestSim — 任务 + 3D 场景沙箱
 
-| 版本 | 说明 |
-|---|---|
-| `questsim:v1` | 任务状态机、3D 导航网格 + A\* 寻路、对话树、触发器体积、实体系统 |
-| `questsim:v1-harbor` | Harbor 场景：NPC 交互、存档/读档 round-trip |
+| 版本                 | 说明                                                             |
+| -------------------- | ---------------------------------------------------------------- |
+| `questsim:v1`        | 任务状态机、3D 导航网格 + A\* 寻路、对话树、触发器体积、实体系统 |
+| `questsim:v1-harbor` | Harbor 场景：NPC 交互、存档/读档 round-trip                      |
 
 可选 PyBullet 后端做真 3D 刚体物理仿真（`pip install -e ".[physics]"`）。
 
 ### Unity 适配器
 
-| 模式 | 说明 |
-|---|---|
-| `unity:mock` | 预录 trace 回放，不需要 Unity 进程 |
+| 模式             | 说明                                        |
+| ---------------- | ------------------------------------------- |
+| `unity:mock`     | 预录 trace 回放，不需要 Unity 进程          |
 | `unity:headless` | 真 gRPC 连接到 Unity headless，可选后端沙箱 |
 
 ```bash
@@ -242,25 +312,47 @@ make test-unity
 
 ![差分回归与 Triage](docs/regression_triage_flow.svg)
 
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart LR
+    B["baseline suite<br/>通常是 pysim:v1"] --> Diff["compute_regress_diff()"]
+    C["candidate suite<br/>通常是 pysim:v2"] --> Diff
+
+    Diff --> New["NEW<br/>基线通过，候选失败"]
+    Diff --> Fixed["FIXED<br/>基线失败，候选通过"]
+    Diff --> StablePass["STABLE_PASS<br/>两边都通过"]
+    Diff --> StableFail["STABLE_FAIL<br/>两边都失败"]
+    Diff --> Missing["MISSING<br/>case_id 只在一边出现"]
+
+    New --> Triage["TriageAgent<br/>只聚类新增失败"]
+    Triage --> Bug["BugReport<br/>可直接转 Jira"]
+    New --> Exit1["退出码 1<br/>阻断发布"]
+    StablePass --> Exit0["退出码 0<br/>可发布"]
+    Fixed --> Report["HTML 报告<br/>展示修复收益"]
+    StableFail --> Report
+    Missing --> Report
+    Bug --> Report
+```
+
 ### Agent 基准表现
 
-| Agent | 核心指标 | 最佳结果 |
-|---|---|---|
-| DesignDocAgent | recall / precision | **100% / 100%**（GLM-5.1 / GPT-5.4 / DS-V4-Pro） |
-| TestGenAgent | v2 bug recall / v1 pass% | **80% / 100%**（GPT-4.1 / GPT-5.4 / DS-V4-Pro） |
-| TriageAgent | cluster recall / precision | **100% / 100%** |
-| CriticAgent | accuracy / recall | **80% / 66.7%** |
+| Agent          | 核心指标                   | 最佳结果                                         |
+| -------------- | -------------------------- | ------------------------------------------------ |
+| DesignDocAgent | recall / precision         | **100% / 100%**（GLM-5.1 / GPT-5.4 / DS-V4-Pro） |
+| TestGenAgent   | v2 bug recall / v1 pass%   | **80% / 100%**（GPT-4.1 / GPT-5.4 / DS-V4-Pro）  |
+| TriageAgent    | cluster recall / precision | **100% / 100%**                                  |
+| CriticAgent    | accuracy / recall          | **80% / 66.7%**                                  |
 
 ### 模型对比速览（2026-04-26）
 
-| 模型 | DesignDoc Recall | TestGen Bug Recall | 备注 |
-|---|---|---|---|
-| GLM-5.1（开推理） | 100% | 80% | 最省 token（~30k） |
-| GPT-5.5 | 100% | 80% | 最新旗舰 |
-| GPT-5.4 | 100% | 80% | 综合强 |
-| DeepSeek-V4-Pro | 100% | 80% | V4 高质量档 |
-| GPT-4.1 | 56% | 80% | 中文文档较弱 |
-| 人工 baseline | — | 100% | ground truth |
+| 模型              | DesignDoc Recall | TestGen Bug Recall | 备注               |
+| ----------------- | ---------------- | ------------------ | ------------------ |
+| GLM-5.1（开推理） | 100%             | 80%                | 最省 token（~30k） |
+| GPT-5.5           | 100%             | 80%                | 最新旗舰           |
+| GPT-5.4           | 100%             | 80%                | 综合强             |
+| DeepSeek-V4-Pro   | 100%             | 80%                | V4 高质量档        |
+| GPT-4.1           | 56%              | 80%                | 中文文档较弱       |
+| 人工 baseline     | —                | 100%               | ground truth       |
 
 > **关键结论**：DesignDoc 用 GLM-5.1（极省 token + 完美召回），TestGen 用 GPT-4.1/5.4（80% bug 召回 + 100% v1 pass）。
 > 80% 是当前 TestGen bug recall 天花板——BUG-002（cooldown isolation）是系统性盲区。
@@ -330,36 +422,36 @@ GameGuard/
 
 全部在 `conda activate gameguard` 环境下运行：
 
-| 命令 | 说明 |
-|---|---|
-| `make test` | 跑 168 个 pytest |
-| `make lint` | ruff check |
-| `make typecheck` | mypy --strict |
-| `make demo` | 端到端 demo：文档 → Bug 报告 |
-| `make regress` | v1 vs v2 差分回归 |
-| `make eval` | 跑全部 Agent eval + rollup |
-| `make proto` | 从 .proto 重生 gRPC stubs |
-| `make unity-server` | 启动 Unity mock gRPC 服务器 |
-| `make clean` | 清理 artifacts 和 \_\_pycache\_\_ |
+| 命令                | 说明                              |
+| ------------------- | --------------------------------- |
+| `make test`         | 跑 168 个 pytest                  |
+| `make lint`         | ruff check                        |
+| `make typecheck`    | mypy --strict                     |
+| `make demo`         | 端到端 demo：文档 → Bug 报告      |
+| `make regress`      | v1 vs v2 差分回归                 |
+| `make eval`         | 跑全部 Agent eval + rollup        |
+| `make proto`        | 从 .proto 重生 gRPC stubs         |
+| `make unity-server` | 启动 Unity mock gRPC 服务器       |
+| `make clean`        | 清理 artifacts 和 \_\_pycache\_\_ |
 
 ---
 
 ## 10. 开发历程
 
-| 天 | 里程碑 |
-|---|---|
-| D1–D2 | 领域模型（Skill/Character/Buff/Invariant DSL）、PySim v1 黄金沙箱 |
-| D3 | 离线闭环：TestCase YAML → Runner → 报告（10 手写用例全过） |
-| D4–D5 | LLM 网关（LiteLLM）、AgentLoop、DesignDocAgent + TestGenAgent |
-| D6 | PySim v2（植入 5 类 bug）、端到端管线打通 |
-| D7–D8 | TriageAgent（两阶段聚类）、DoT + replay 不变式、exploratory + property-based |
-| D9 | `gameguard regress` 差分回归 + HTML 报告 |
-| D10 | CriticAgent（review_hook）、Unity gRPC proto 骨架 |
-| D11 | Triage 评分 eval + 对比分析设计 |
-| D12–D17 | QuestSim 沙箱（任务/3D/寻路/对话/物理/存档）+ 10 种 Quest 不变式 |
-| D18 | QuestSim v2（植入 5 类 Quest bug）+ 设计文档 eval 体系 |
-| D19 | Unity headless gRPC 真通路 + Gemini 调研下线 |
-| D20– | 模型对比实验（DeepSeek V4 / GLM-5.1 / GPT-5.4 / GPT-5.5）+ 推理开关实验 |
+| 天      | 里程碑                                                                       |
+| ------- | ---------------------------------------------------------------------------- |
+| D1–D2   | 领域模型（Skill/Character/Buff/Invariant DSL）、PySim v1 黄金沙箱            |
+| D3      | 离线闭环：TestCase YAML → Runner → 报告（10 手写用例全过）                   |
+| D4–D5   | LLM 网关（LiteLLM）、AgentLoop、DesignDocAgent + TestGenAgent                |
+| D6      | PySim v2（植入 5 类 bug）、端到端管线打通                                    |
+| D7–D8   | TriageAgent（两阶段聚类）、DoT + replay 不变式、exploratory + property-based |
+| D9      | `gameguard regress` 差分回归 + HTML 报告                                     |
+| D10     | CriticAgent（review_hook）、Unity gRPC proto 骨架                            |
+| D11     | Triage 评分 eval + 对比分析设计                                              |
+| D12–D17 | QuestSim 沙箱（任务/3D/寻路/对话/物理/存档）+ 10 种 Quest 不变式             |
+| D18     | QuestSim v2（植入 5 类 Quest bug）+ 设计文档 eval 体系                       |
+| D19     | Unity headless gRPC 真通路 + Gemini 调研下线                                 |
+| D20–    | 模型对比实验（DeepSeek V4 / GLM-5.1 / GPT-5.4 / GPT-5.5）+ 推理开关实验      |
 
 详见 [`docs/dev-log.md`](docs/dev-log.md)。
 

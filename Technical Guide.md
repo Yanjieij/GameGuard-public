@@ -52,6 +52,49 @@ Reports (reports/*)                 ← Markdown / HTML / Jinja2
 - **Plan-and-execute 分离**：Plan 阶段走 LLM（昂贵、有随机性），产物落 YAML 可缓存复用。Execute 阶段纯确定性（同 seed = 同 trace）。
 - **Adapter 隔离**：Agent 和 Runner 只对 `GameAdapter` 协议讲话，具体实现（PySim/QuestSim/Unity headless）可互换。
 
+下面这张图按代码包边界展示依赖方向。关键点是：Agent 只生产结构化产物，Runner 只消费 TestPlan，
+沙箱只暴露 Adapter 协议，报告层只读结果和证据。
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    CLI["cli.py<br/>Typer 命令入口"]
+    Orch["agents/orchestrator.py<br/>Plan / Execute 编排"]
+
+    subgraph Plan["Plan：LLM 驱动"]
+        Agents["agents/*<br/>DesignDoc / TestGen / Critic"]
+        Tools["tools/*<br/>Pydantic tool schema"]
+        LLM["llm/*<br/>LiteLLM + cache + budget + trace"]
+    end
+
+    subgraph Data["共享数据模型"]
+        Domain["domain/*<br/>Action / Skill / Quest / Invariant"]
+        Case["testcase/model.py<br/>TestCase / TestPlan / SuiteResult"]
+    end
+
+    subgraph Execute["Execute：确定性执行"]
+        Runner["testcase/runner.py<br/>动作调度 + 断言检查"]
+        Adapter["sandbox/adapter.py<br/>GameAdapter ABC"]
+        Sandboxes["PySim / QuestSim / UnityAdapter"]
+    end
+
+    Reports["reports/*<br/>Markdown / HTML / BugReport"]
+
+    CLI --> Orch
+    Orch --> Agents
+    Agents --> Tools
+    Agents --> LLM
+    Tools --> Domain
+    Tools --> Case
+    Orch --> Runner
+    Runner --> Case
+    Runner --> Domain
+    Runner --> Adapter
+    Adapter --> Sandboxes
+    Runner --> Reports
+    Agents --> Reports
+```
+
 ---
 
 ## 2. 领域模型
@@ -116,6 +159,31 @@ class TestCase(BaseModel):
 ```
 
 **为什么不开 Python 函数驱动**：传统 pytest 写法中一个测试 = 一个函数，LLM 难以凭空生成、回归 diff 难定位、策划/QA 看不懂。数据驱动让 LLM 以 JSON 产出（通过 tool-calling 提交），人也能直接写 YAML，两者对 Runner 完全无差别。
+
+领域对象之间的关系可以理解为一条从“策划规则”到“可执行证据”的数据链：
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart LR
+    Skill["SkillBook<br/>技能、冷却、MP、Buff"]
+    Character["Character<br/>初始 HP / MP / 状态"]
+    Inv["InvariantBundle<br/>机器可验证规则"]
+    Action["Action Union<br/>Cast / Wait / Interrupt / MoveTo"]
+    Assertion["Assertion<br/>Invariant + 检查时机"]
+    Case["TestCase<br/>seed + sandbox + actions"]
+    Plan["TestPlan<br/>多条 TestCase"]
+    Suite["TestSuiteResult<br/>结果 + trace 路径"]
+
+    Skill --> Inv
+    Character --> Inv
+    Skill --> Action
+    Character --> Action
+    Inv --> Assertion
+    Action --> Case
+    Assertion --> Case
+    Case --> Plan
+    Plan --> Suite
+```
 
 ### 2.3 断言检查时机
 
@@ -211,6 +279,34 @@ for step in range(max_steps):
 ```
 
 ### 4.2 关键设计决策
+
+AgentLoop 的状态机很小，但边界条件都显式可控：什么时候继续问模型、什么时候把工具错误交回模型自修复、什么时候立即停止。
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    Start["初始化 messages<br/>system prompt + user task"]
+    Chat["LLMClient.chat()<br/>带 tools 和 tool_choice"]
+    HasTools{"返回 tool_calls？"}
+    Finished["finished=True<br/>无工具调用，正常结束"]
+    Dispatch["ToolRegistry.dispatch()<br/>Pydantic 校验 + 执行工具"]
+    ToolOK{"工具执行成功？"}
+    AppendOK["追加 ok tool result"]
+    AppendErr["追加 error tool result<br/>让 LLM 自修复"]
+    StopWhen{"stop_when 命中？"}
+    MaxSteps{"达到 max_steps？"}
+    Done["返回 AgentRunStats<br/>结构化产物由 collector 持有"]
+
+    Start --> Chat --> HasTools
+    HasTools -- "否" --> Finished --> Done
+    HasTools -- "是" --> Dispatch --> ToolOK
+    ToolOK -- "是" --> AppendOK --> StopWhen
+    ToolOK -- "否" --> AppendErr --> StopWhen
+    StopWhen -- "是" --> Done
+    StopWhen -- "否" --> MaxSteps
+    MaxSteps -- "否" --> Chat
+    MaxSteps -- "是" --> Done
+```
 
 **为什么不依赖 LangChain**：手写 ~200 行，边界行为全在控制范围内。出问题直接 debug 这里的循环体，
 不需要跨库追信号链。
@@ -433,6 +529,28 @@ class GameAdapter(ABC):
 6 个方法，这个接口保持稳定。Agent 和 Runner 只对 `GameAdapter` 讲话，
 具体实现（PySim/QuestSim/Unity headless）由 `cli.py::resolve_sandbox_factory` 字符串路由。
 
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    Spec["sandbox 字符串<br/>adapter:version"]
+    Router["resolve_sandbox_factory()<br/>唯一运行时路由点"]
+    Adapter["GameAdapter ABC<br/>reset / step / trace / snapshot / restore"]
+
+    Spec --> Router --> Adapter
+
+    Adapter --> PySim["PySim<br/>技能系统 v1 / v2"]
+    Adapter --> Quest["QuestSim<br/>任务、导航、对话、存档"]
+    Adapter --> Unity["UnityAdapter<br/>mock trace 或 headless gRPC"]
+
+    Unity --> Backend{"headless 后端"}
+    Backend --> PySimBackend["pysim:v1 / pysim:v2"]
+    Backend --> QuestBackend["questsim:v1 / harbor"]
+
+    PySim --> Evidence["统一证据<br/>EventLog + snapshot"]
+    Quest --> Evidence
+    Unity --> Evidence
+```
+
 ### PySim v1/v2 双版本设计
 
 - **v1**：黄金实现（无 bug）。4 个技能 + 3 种 Buff + 暴击。~1,000 行确定性离散仿真。
@@ -457,6 +575,30 @@ mock server（`sandbox/unity/mock_server.py`）实现了完整的 request/respon
 ## 8. Runner 与断言系统
 
 ### 执行模型
+
+单条用例执行时，Runner 是唯一调度者：沙箱只负责响应动作并追加事件，断言检查和证据落盘都在 Runner 侧完成。
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryColor": "#e8f3ff", "primaryTextColor": "#17324d", "primaryBorderColor": "#5aa0d8", "secondaryColor": "#ecf8ef", "secondaryTextColor": "#17324d", "secondaryBorderColor": "#58a76a", "tertiaryColor": "#fff3df", "tertiaryTextColor": "#17324d", "tertiaryBorderColor": "#dc9b35", "lineColor": "#607d96", "textColor": "#17324d", "fontFamily": "Arial, Microsoft YaHei, sans-serif"}}}%%
+flowchart TB
+    Load["读取 TestCase<br/>seed / sandbox / actions / assertions"]
+    Factory["factory(case.sandbox)<br/>创建 GameAdapter"]
+    Reset["sandbox.reset(seed)"]
+    Split["拆分 assertions<br/>EVERY_TICK / END_OF_RUN / ON_EVENT"]
+    Step["逐条 action 调 sandbox.step()"]
+    Accepted{"动作被接受？"}
+    TickCheck["检查 EVERY_TICK 断言"]
+    More{"还有 action？"}
+    EndCheck["检查 END_OF_RUN 断言<br/>含 replay / save-load meta assertion"]
+    Artifacts["写 trace JSONL<br/>写 snapshot .bin"]
+    Result["返回 TestResult<br/>passed / failed / error"]
+
+    Load --> Factory --> Reset --> Split --> Step --> Accepted
+    Accepted -- "否" --> Artifacts --> Result
+    Accepted -- "是" --> TickCheck --> More
+    More -- "是" --> Step
+    More -- "否" --> EndCheck --> Artifacts --> Result
+```
 
 ```python
 def run_case(case: TestCase, factory: SandboxFactory):

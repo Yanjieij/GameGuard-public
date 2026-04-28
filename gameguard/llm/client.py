@@ -384,6 +384,11 @@ _PROVIDER_MAP: dict[str, dict[str, str]] = {
         "api_base": "https://api.deepseek.com",
         "api_key_env": "DEEPSEEK_API_KEY",
     },
+    # 小米 MiMo Token Plan — OpenAI-compatible endpoint
+    "mimo": {
+        "api_base": "https://token-plan-cn.xiaomimimo.com/v1",
+        "api_key_env": "MIMO_API_KEY",
+    },
 }
 
 def _resolve_provider(model: str) -> tuple[str, dict[str, Any]]:

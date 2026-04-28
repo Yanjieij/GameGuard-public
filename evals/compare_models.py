@@ -130,6 +130,12 @@ REGISTRY = {
         reasoning_effort="none",
         note="OpenAI latest flagship; reasoning_effort=none 关闭思考以稳定 tool-calling",
     ),
+    "mimo-v2.5-pro": ModelSpec(
+        name="MiMo-V2.5-Pro",
+        model="mimo/mimo-v2.5-pro",
+        disable_thinking=False,
+        note="小米 MiMo，Token Plan 接入",
+    ),
     # Gemini 2.5 Flash / Pro 已从 REGISTRY 下线：
     #   - LiteLLM 1.83 未翻译 tool_choice="required" 到 FunctionCallingConfig.mode="ANY"
     #   - 我们曾绕开 LiteLLM 直调 google-genai SDK（gemini_native.py），

@@ -19,6 +19,7 @@
 | `deepseek-v4-pro` | DeepSeek-V4-Pro | `deepseek-v4/deepseek-v4-pro` | disable_thinking* | 0.0 | V4 高质量档 |
 | `deepseek-v4-flash` | DeepSeek-V4-Flash | `deepseek-v4/deepseek-v4-flash` | disable_thinking* | 0.0 | V4 快速档 |
 | `deepseek` | DeepSeek-chat | `deepseek/deepseek-chat` | — | 0.0 | 当前 baseline |
+| `mimo-v2.5-pro` | MiMo-V2.5-Pro | `mimo/mimo-v2.5-pro` | — | 0.0 | 小米 MiMo，Token Plan 接入 |
 
 > \* DeepSeek V4 的 `disable_thinking` 不仅是关推理，更是 API 变体选择——去掉后会路由到 `deepseek-reasoner`，而 reasoner 不支持 `tool_choice`，直接报错。因此必须保持。
 >
@@ -31,6 +32,7 @@
 | Provider | Recall | Precision | Steps | Tokens | Wall | 日期 |
 |---|---:|---:|---:|---:|---:|---|
 | **GLM-5.1** 🔥 | **100%** | 100% | 4 | 30,261 | 221s | 04-26 |
+| **MiMo-V2.5-Pro** 🆕 | **100%** | 100% | 5 | 44,314 | 180s | 04-26 |
 | **GPT-5.5** | **100%** | 100% | 12 | 296,734 | 86s | 04-26 |
 | **GPT-5.4** | **100%** | 100% | 9 | 144,905 | 112s | 04-24 |
 | **DS-V4-Pro** | **100%** | 100% | 9 | 62,989 | 247s | 04-24 |
@@ -45,6 +47,7 @@
 | Provider | v2 Bug Recall | v1 Pass% | 用例数 | Steps | Tokens | Wall | 日期 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | **GLM-5.1** 🔥 | 80% | **100%** | 9 | 3 | 20,603 | 166s | 04-26 |
+| **MiMo-V2.5-Pro** 🆕 | 80% | 100% | 8 | 3 | 22,094 | 93s | 04-26 |
 | GPT-5.4 | 80% | 100% | 8 | 3 | 13,222 | 26s | 04-24 |
 | DS-V4-Pro | 80% | 100% | 8 | 3 | 20,302 | 134s | 04-24 |
 | GPT-4.1 | 80% | 100% | 5 | 3 | — | 11s | 04-18 |
@@ -79,6 +82,14 @@ GPT-5.5 开推理时是唯一达到 TestGen 双 100% 的模型。但当前配置
 ### DeepSeek V4：无法对比
 
 `disable_thinking` 去掉后 API 路由到 `deepseek-reasoner`，而 reasoner 不支持 `tool_choice`，直接报错。这说明 `disable_thinking` 对 DeepSeek V4 不仅是关推理，更是 API 变体选择器——**必须保持 True**。
+
+### MiMo-V2.5-Pro：首次参赛即达一流
+
+| MiMo-V2.5-Pro | DD Recall | DD Tokens | DD Steps | TG Bug Recall | TG v1 Pass | TG Wall |
+|---|---|---|---|---|---|---|
+| 首次跑 | 100% | 44,314 | 5 | 80% | 100% | 93s |
+
+DesignDoc 100% 双满分，效率仅次于 GLM-5.1（44k vs 30k tokens）。TestGen 达到 80% 天花板且 v1 pass 100%（与 GPT-5.4 和 DS-V4-Pro 同档）。综合来看跻身第一梯队，性价比优秀。
 
 ---
 

@@ -25,12 +25,7 @@ DeepSeek-chat / DeepSeek-V4-Flash / DeepSeek-V4-Pro / GLM-4.6 / GLM-4.7 / GLM-5.
 
 以下数据来自各 Agent 独立 eval，最后一次完整跑是 **2026-04-18**。当时的 prompt 版本下 DesignDoc recall 仅 55.56%、TestGen v2 recall 仅 20%。经过 prompt 强化（codex-strengthen-design-doc-evals branch），当前 recall 已达 100% / 80%（见 MODEL_COMPARISON.md）。
 
-| Agent | 历史 recall | 历史 precision | 当前实际 recall | 详细 |
-|---|---|---|---|---|
-| DesignDocAgent | 55.56% | 100% | **100%** | [`evals/design_doc/results.md`](evals/design_doc/results.md) |
-| TestGenAgent | 20% v2 recall | 57% v1 pass | **80% v2 / 100% v1** | [`evals/test_gen/results.md`](evals/test_gen/results.md) |
-| TriageAgent | 100% | 100% | 100% | [`evals/triage/results.md`](evals/triage/results.md) |
-| CriticAgent | 66.67% recall | 100% precision | 66.67% | [`evals/critic/results.md`](evals/critic/results.md) |
+详细运行时数据见 [`evals/agent-eval-details.md`](evals/agent-eval-details.md)（`make eval` 或 `python -m evals.rollup` 自动生成）。
 
 ---
 

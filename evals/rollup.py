@@ -1,4 +1,4 @@
-"""把各 Agent eval 的 results.md 聚合成项目根的 EVAL.md。
+"""把各 Agent eval 的 results.md 聚合成详细评估文档。
 
 跑法：
     python -m evals.rollup
@@ -10,7 +10,7 @@
     evals/critic/results.md
 
 写：
-    EVAL.md       （项目根）
+    evals/agent-eval-details.md
 """
 from __future__ import annotations
 
@@ -123,7 +123,8 @@ def main() -> int:
         lines.append("---")
         lines.append("")
 
-    out = Path("EVAL.md")
+    out = Path("evals/agent-eval-details.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"[rollup] 写入 {out}")
     return 0

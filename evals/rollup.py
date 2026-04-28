@@ -23,7 +23,7 @@ SECTIONS = [
     ("TestGenAgent", "evals/test_gen/results.md"),
     ("TriageAgent", "evals/triage/results.md"),
     ("CriticAgent", "evals/critic/results.md"),
-    ("LLM Provider 对比", "evals/compare_models/results.md"),
+    ("LLM Provider 对比", "MODEL_COMPARISON.md"),
 ]
 
 
